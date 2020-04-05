@@ -29,7 +29,7 @@ async def on_message(message):
     if message.channel.name in jiselConf['event_request_channel'] and "Server:".upper() in message.clean_content.upper():
         board = trello_client.get_board(jiselConf['trello']['board_id'])
         request_list = board.get_list(jiselConf['trello']['list_id'])
-        request_list.add_card(message.author.nick, message.clean_content)
+        request_list.add_card(message.author.nick or message.author.name, message.clean_content)
 
 
 # test token
