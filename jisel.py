@@ -54,7 +54,6 @@ async def on_message(message):
 
         df = pd.DataFrame(data, columns=headers)
         print(df.head())
-
         # NO.	Submitter/Server	BUG details	Resolution	Screenshot
         if message.clean_content.lower().startswith("NO.".lower()):
             split_text = message.clean_content.rstrip("\n\r").split("\n")
@@ -74,10 +73,9 @@ async def on_message(message):
                 async with aiohttp.ClientSession() as session:
                     async with session.get(message.attachments[0].url) as r:
                         if r.status == 200:
-                            if r.content_type == 'image/jpeg':
-                                result = await r.read()
-                                row.append(f"=IMAGE(\"{message.attachments[0].url}\")")
-                                wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
+                            result = await r.read()
+                            row.append(f"=IMAGE(\"{message.attachments[0].url}\")")
+                            wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
             else:
                 wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
         elif message.attachments:
