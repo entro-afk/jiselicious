@@ -75,15 +75,16 @@ async def on_message(message):
                         if r.status == 200:
                             result = await r.read()
                             row.append(f"=IMAGE(\"{message.attachments[0].url}\")")
-                            wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
+                            wks.insert_row(row, df.shape[0] + 2, value_input_option='USER_ENTERED')
             else:
+                row.append(screenshot)
                 wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
         elif message.attachments:
             async with aiohttp.ClientSession() as session:
                 async with session.get(message.attachments[0].url) as r:
                     if r.status == 200:
                         result = await r.read()
-                        row = ["", "", "", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
+                        row = ["Continuation", "", "", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
                         wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
 
 
