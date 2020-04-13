@@ -84,7 +84,7 @@ async def on_message(message):
                 async with session.get(message.attachments[0].url) as r:
                     if r.status == 200:
                         result = await r.read()
-                        row = ["Continuation", "", "", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
+                        row = ["", "", "Continuation", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
                         wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
 
 
