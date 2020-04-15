@@ -55,11 +55,11 @@ async def on_message(message):
         df = pd.DataFrame(data, columns=headers)
         print(df.head())
         # NO.	Submitter/Server	BUG details	Resolution	Screenshot
-        if message.clean_content.lower().startswith("NO.".lower()):
+        if message.clean_content.lower().startswith("NO.".lower()) or message.clean_content.lower().startswith("NO".lower()):
             split_text = message.clean_content.rstrip("\n\r").split("\n")
-            bug_number = re.sub("NO.", '', split_text[0]).strip()
-            bug_submitter = re.sub("Submitter/Server:", '', split_text[1]).strip()
-            bug_details = re.sub("BUG details:", '', split_text[2]).strip()
+            bug_number = re.sub("NO.|NO", '', split_text[0]).strip()
+            bug_submitter = re.sub("Submitter/Server:|Submitter|Server", '', split_text[1]).strip()
+            bug_details = re.sub("BUG details:|Bug details", '', split_text[2]).strip()
             screenshot = re.sub("Screenshot:|Screenshot", '', split_text[3]).strip()
             bug_resolution = ""
             row = [bug_number, bug_submitter, bug_details, bug_resolution]
