@@ -29,8 +29,7 @@ trello_client = TrelloClient(
 scope = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
 
-credentials = ServiceAccountCredentials.from_json_keyfile_name(
-         jiselConf['goog'], scope) # Your json file here
+credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog'], scope)  # Your json file here
 
 gc = gspread.authorize(credentials)
 
@@ -54,13 +53,13 @@ async def on_message(message):
 
         df = pd.DataFrame(data, columns=headers)
         print(df.head())
-        # NO.	Submitter/Server	BUG details	Resolution	Screenshot
-        if message.clean_content.lower().startswith("NO.".lower()) or message.clean_content.lower().startswith("NO".lower()):
+        # NO.   Submitter/Server        BUG details     Resolution      Screenshot
+        if message.clean_content.lower().startswith("NO.".lower()):
             split_text = message.clean_content.rstrip("\n\r").split("\n")
-            bug_number = re.sub("NO.|NO", '', split_text[0]).strip()
-            bug_submitter = re.sub("Submitter/Server:|Submitter|Server", '', split_text[1] if len(split_text) > 1 else '').strip()
-            bug_details = re.sub("BUG details:|Bug details", '', split_text[2] if len(split_text) > 2 else '').strip()
-            screenshot = re.sub("Screenshot:|Screenshot", '', split_text[3] if len(split_text) > 3 else '').strip()
+            bug_number = re.sub("NO.", '', split_text[0]).strip()
+            bug_submitter = re.sub("Submitter/Server:", '', split_text[1]).strip()
+            bug_details = re.sub("BUG details:", '', split_text[2]).strip()
+            screenshot = re.sub("Screenshot:|Screenshot", '', split_text[3]).strip()
             bug_resolution = ""
             row = [bug_number, bug_submitter, bug_details, bug_resolution]
             if "gyazo" in screenshot:
@@ -84,7 +83,7 @@ async def on_message(message):
                 async with session.get(message.attachments[0].url) as r:
                     if r.status == 200:
                         result = await r.read()
-                        row = ["", "", "Continuation", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
+                        row = ["Continuation", "", "", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
                         wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
 
 
