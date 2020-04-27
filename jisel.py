@@ -9,6 +9,13 @@ from gyazo import Api
 from urllib.parse import urlparse
 from os.path import splitext, basename
 import aiohttp
+from sqlalchemy import *
+import json
+import os
+import datetime
+from discord import File
+import requests
+
 
 client = commands.Bot(command_prefix='!')
 with open(r'jiselConf.yaml') as file:
@@ -38,6 +45,36 @@ gc = gspread.authorize(credentials)
 async def on_ready():
     print('Bot is ready.')
 
+@client.command(pass_context=True, name='homeslog')
+async def get_homestead_alarms_log(ctx):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string, echo=True)
+    metadata = MetaData(schema="homesteadProduction")
+
+    with db.connect() as conn:
+        table = Table('alarmsLog', metadata, autoload=True, autoload_with=conn)
+        select_st = select([table])
+        res = conn.execute(select_st)
+        # column_names = [c["name"] for c in res.column_descriptions]
+        result = [{column: value for column, value in rowproxy.items()} for rowproxy in res]
+        now_time = datetime.datetime.now()
+        if not os.path.exists('jsonFiles'):
+            os.makedirs('jsonFiles')
+        try:
+            with open(f'jsonFiles/{now_time.strftime("%m%d%Y_%H%M%S")}_logs.json', 'w', encoding='utf-8') as f:
+                json.dump(result, f, ensure_ascii=False, indent=4, sort_keys=True, default=str)
+        except Exception as err:
+            ctx.send(f"Jiselicious could not create the file for the logs due to the following error {err}")
+            raise err
+        await ctx.send(f'***Homestead Log for {now_time.strftime("%m/%d/%Y %H:%M:%S")}***', file=File(f'jsonFiles/{now_time.strftime("%m%d%Y_%H%M%S")}_logs.json'))
+        os.remove(f'jsonFiles/{now_time.strftime("%m%d%Y_%H%M%S")}_logs.json')
+        json_link = get_json_blob_link(json.dumps(result, ensure_ascii=False, indent=4, sort_keys=True, default=str))
+        await ctx.send(json_link)
+
+def get_json_blob_link(json_data):
+    API_ENDPOINT = "https://jsonblob.com/api/jsonBlob"
+    r = requests.post(url=API_ENDPOINT, data=json_data)
+    return r.headers['Location']
 
 @client.event
 async def on_message(message):
@@ -85,6 +122,7 @@ async def on_message(message):
                         result = await r.read()
                         row = ["Continuation", "", "", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
                         wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
+    await client.process_commands(message)
 
 
 
