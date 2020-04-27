@@ -68,7 +68,7 @@ async def get_homestead_alarms_log(ctx):
             raise err
         await ctx.send(f'***Homestead Log for {now_time.strftime("%m/%d/%Y %H:%M:%S")}***', file=File(f'jsonFiles/{now_time.strftime("%m%d%Y_%H%M%S")}_logs.json'))
         os.remove(f'jsonFiles/{now_time.strftime("%m%d%Y_%H%M%S")}_logs.json')
-        json_link = get_json_blob_link(json.dumps(result, ensure_ascii=False, indent=4, sort_keys=True, default=str))
+        json_link = get_json_blob_link(json.dumps(result, ensure_ascii=False, indent=4, sort_keys=True, default=str).encode('utf-8'))
         await ctx.send(json_link)
 
 def get_json_blob_link(json_data):
