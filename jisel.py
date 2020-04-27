@@ -62,19 +62,19 @@ async def get_homestead_alarms_log(ctx):
             os.makedirs('jsonFiles')
         try:
             with open(f'jsonFiles/{now_time.strftime("%m%d%Y_%H%M%S")}_logs.json', 'w', encoding='utf-8') as f:
-                json.dump(result, f, ensure_ascii=False, indent=4, sort_keys=True, default=str)
+                json.dump(result, f, ensure_ascii=False, sort_keys=True, default=str)
         except Exception as err:
             ctx.send(f"Jiselicious could not create the file for the logs due to the following error {err}")
             raise err
         await ctx.send(f'***Homestead Log for {now_time.strftime("%m/%d/%Y %H:%M:%S")}***', file=File(f'jsonFiles/{now_time.strftime("%m%d%Y_%H%M%S")}_logs.json'))
         os.remove(f'jsonFiles/{now_time.strftime("%m%d%Y_%H%M%S")}_logs.json')
-        json_link = get_json_blob_link(str(result))
+        json_link = get_json_blob_link(json.dumps(result, ensure_ascii=False, sort_keys=True, default=str).encode('utf-8'))
         await ctx.send(json_link)
 
 def get_json_blob_link(json_data):
-    API_ENDPOINT = "https://hastebin.com/documents"
+    API_ENDPOINT = "https://jsonblob.com/api/jsonBlob"
     r = requests.post(url=API_ENDPOINT, data=json_data)
-    return f"https://hastebin.com/{r.json()['key']}"
+    return r.headers['Location']
 
 @client.event
 async def on_message(message):
