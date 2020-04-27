@@ -17,7 +17,7 @@ from discord import File
 import requests
 
 
-client = commands.Bot(command_prefix='!')
+client = commands.Bot(command_prefix='+')
 with open(r'jiselConf.yaml') as file:
     # The FullLoader parameter handles the conversion from YAML
     # scalar values to Python the dictionary format
@@ -45,7 +45,7 @@ gc = gspread.authorize(credentials)
 async def on_ready():
     print('Bot is ready.')
 
-@client.command(pass_context=True, name='homeslog')
+@client.command(pass_context=True, name='logshome')
 async def get_homestead_alarms_log(ctx):
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string, echo=True)
@@ -68,13 +68,13 @@ async def get_homestead_alarms_log(ctx):
             raise err
         await ctx.send(f'***Homestead Log for {now_time.strftime("%m/%d/%Y %H:%M:%S")}***', file=File(f'jsonFiles/{now_time.strftime("%m%d%Y_%H%M%S")}_logs.json'))
         os.remove(f'jsonFiles/{now_time.strftime("%m%d%Y_%H%M%S")}_logs.json')
-        json_link = get_json_blob_link(json.dumps(result, ensure_ascii=False, indent=4, sort_keys=True, default=str).encode('utf-8'))
+        json_link = get_json_blob_link(str(result))
         await ctx.send(json_link)
 
 def get_json_blob_link(json_data):
-    API_ENDPOINT = "https://jsonblob.com/api/jsonBlob"
+    API_ENDPOINT = "https://hastebin.com/documents"
     r = requests.post(url=API_ENDPOINT, data=json_data)
-    return r.headers['Location']
+    return f"https://hastebin.com/{r.json()['key']}"
 
 @client.event
 async def on_message(message):
