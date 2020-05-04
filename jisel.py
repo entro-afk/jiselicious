@@ -15,7 +15,9 @@ import os
 import datetime
 from discord import File
 import requests
-
+import time
+import asyncio
+import threading
 
 client = commands.Bot(command_prefix='+')
 with open(r'jiselConf.yaml') as file:
@@ -45,6 +47,7 @@ gc = gspread.authorize(credentials)
 async def on_ready():
     print('Bot is ready.')
 
+
 @client.command(pass_context=True, name='logshome')
 async def get_homestead_alarms_log(ctx):
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
@@ -71,17 +74,49 @@ async def get_homestead_alarms_log(ctx):
         json_link = get_json_blob_link(json.dumps(result, ensure_ascii=False, sort_keys=True, default=str).encode('utf-8'))
         await ctx.send(json_link)
 
+
 def get_json_blob_link(json_data):
     API_ENDPOINT = "https://jsonblob.com/api/jsonBlob"
     r = requests.post(url=API_ENDPOINT, data=json_data)
     return r.headers['Location']
 
-@client.event
-async def on_message(message):
+
+async def event_number_validator(message, last_event_number, current_event_number):
+    if last_event_number+1 != current_event_number:
+        await message.channel.send(f"<@{message.author.id}>, please edit your event number to be {last_event_number+1}")
+        await  _job(message)
+
+
+async def _job(message):
+    await asyncio.sleep(300.0)
+    await callback_second_validator(message)
+
+
+async def callback_second_validator(message):
+    last_messages = await get_all_messages(message.channel)
+    last_messages = [m for m in last_messages if m.author.id != client.user.id]
+    last_event_number = extract_event_number(last_messages[1])
+    current_event_number = extract_event_number(last_messages[0])
+    if last_event_number + 1 != current_event_number:
+        await message.channel.send(f"Next hoster, please use this number as your event number: {last_event_number + 2}")
+
+
+async def handle_complete_events(message):
+    if message.channel.name == 'complete-events':
+        last_messages = await get_all_messages(message.channel)
+        last_messages = [m for m in last_messages if m.author.id != client.user.id]
+        last_event_number = extract_event_number(last_messages[1])
+        current_event_number = extract_event_number(last_messages[0])
+        await event_number_validator(last_messages[0], last_event_number, current_event_number)
+
+async def handle_request_event(message):
     if message.channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.clean_content.upper() or message.clean_content.upper().startswith("Server".upper())):
         board = trello_client.get_board(jiselConf['trello']['board_id'])
         request_list = board.get_list(jiselConf['trello']['list_id'])
         request_list.add_card(message.author.nick or message.author.name, message.clean_content)
+
+
+async def handle_bug_report(message):
     if message.channel.name in ["bug-report","event-submissions"]:
         wks = gc.open("PWM bug report chart").worksheet("Hoja 1")
 
@@ -93,10 +128,13 @@ async def on_message(message):
         # NO.   Submitter/Server        BUG details     Resolution      Screenshot
         if message.clean_content.lower().startswith("NO.".lower()):
             split_text = message.clean_content.rstrip("\n\r").split("\n")
-            bug_number = re.sub("NO.", '', split_text[0]).strip()
+            bug_number = re.sub("NO.|NO|No.|No", '', split_text[0]).strip()
             bug_submitter = re.sub("Submitter/Server:", '', split_text[1]).strip()
             bug_details = re.sub("BUG details:", '', split_text[2]).strip()
-            screenshot = re.sub("Screenshot:|Screenshot", '', split_text[3]).strip()
+            try:
+                screenshot = re.sub("Screenshot:|Screenshot", '', split_text[3]).strip()
+            except IndexError:
+                screenshot = ""
             bug_resolution = ""
             row = [bug_number, bug_submitter, bug_details, bug_resolution]
             if "gyazo" in screenshot:
@@ -122,13 +160,44 @@ async def on_message(message):
                         result = await r.read()
                         row = ["Continuation", "", "", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
                         wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
+
+async def main(message):
+    await asyncio.gather(
+        handle_complete_events(message),
+        handle_request_event(message),
+        handle_bug_report(message)
+    )
+    # asyncio.ensure_future(handle_complete_events(message))
+    # asyncio.ensure_future(handle_request_event(message))
+    # asyncio.ensure_future(handle_bug_report(message))
+
+@client.event
+async def on_message(message):
+    if message.author.id != client.user.id:
+        await main(message)
+
     await client.process_commands(message)
 
+
+def extract_event_number(message):
+    message_split_into_lines = message.clean_content.split("\n")
+    for line in message_split_into_lines:
+        if "event" in line.lower() and bool(re.search(r'\d', line)):
+            return int(re.findall('\d+', line)[0])
+
+
+async def get_all_messages(channel):
+    events = []
+    async for message in channel.history(limit=10):
+        if message.author.id != client.user.id:
+            events.append(message)
+    return events
 
 
 # test token
 # client.run(channelsConf['test_bot_token'])
 # pwm token
 client.run(jiselConf['bot_token'])
+
 
 # pm2 reload jisel.py --interpreter=python3
