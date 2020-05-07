@@ -183,7 +183,7 @@ async def on_message(message):
 def extract_event_number(message):
     message_split_into_lines = message.clean_content.split("\n")
     for line in message_split_into_lines:
-        if "time" in line.lower() and "event" in line.lower() and bool(re.search(r'\d', line)):
+        if "time" not in line.lower() and "event" in line.lower() and bool(re.search(r'\d', line)):
             return int(re.findall('\d+', line)[0])
 
 
