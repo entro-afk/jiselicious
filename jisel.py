@@ -102,7 +102,7 @@ async def callback_second_validator(message):
 
 
 async def handle_complete_events(message):
-    if message.channel.name == 'complete-events':
+    if message.channel.name == jiselConf['complete_events_channel']:
         last_messages = await get_all_messages(message.channel)
         if len(last_messages) > 1:
             last_event_number = extract_event_number(last_messages[1])
