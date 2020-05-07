@@ -88,7 +88,7 @@ async def event_number_validator(message, last_event_number, current_event_numbe
 
 
 async def _job(message):
-    await asyncio.sleep(300.0)
+    await asyncio.sleep(15.0)
     await callback_second_validator(message)
 
 
@@ -104,10 +104,11 @@ async def callback_second_validator(message):
 async def handle_complete_events(message):
     if message.channel.name == 'complete-events':
         last_messages = await get_all_messages(message.channel)
-        last_messages = [m for m in last_messages if m.author.id != client.user.id]
-        last_event_number = extract_event_number(last_messages[1])
-        current_event_number = extract_event_number(last_messages[0])
-        await event_number_validator(last_messages[0], last_event_number, current_event_number)
+        if len(last_messages) > 1:
+            last_event_number = extract_event_number(last_messages[1])
+            current_event_number = extract_event_number(last_messages[0])
+            if "Next hoster, please use this number as your event number" not in last_messages[1].clean_content:
+                await event_number_validator(last_messages[0], last_event_number, current_event_number)
 
 async def handle_request_event(message):
     if message.channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.clean_content.upper() or message.clean_content.upper().startswith("Server".upper())):
@@ -188,8 +189,11 @@ def extract_event_number(message):
 
 async def get_all_messages(channel):
     events = []
-    async for message in channel.history(limit=10):
+    async for message in channel.history(limit=50):
         if message.author.id != client.user.id:
+            if "event" in message.clean_content.lower() and "id" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
+                events.append(message)
+        elif "Next hoster, please use this number as your event number" in message.clean_content and bool(re.search(r'\d', message.clean_content)):
             events.append(message)
     return events
 
