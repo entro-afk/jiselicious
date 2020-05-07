@@ -88,7 +88,7 @@ async def event_number_validator(message, last_event_number, current_event_numbe
 
 
 async def _job(message):
-    await asyncio.sleep(15.0)
+    await asyncio.sleep(300.0)
     await callback_second_validator(message)
 
 
