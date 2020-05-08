@@ -13,13 +13,16 @@ from sqlalchemy import *
 import json
 import os
 import datetime
-from discord import File
+from discord import File, Member, Role, PermissionOverwrite
 import requests
 import time
 import asyncio
 import threading
 
+
 client = commands.Bot(command_prefix='+')
+
+
 with open(r'jiselConf.yaml') as file:
     # The FullLoader parameter handles the conversion from YAML
     # scalar values to Python the dictionary format
@@ -46,6 +49,24 @@ gc = gspread.authorize(credentials)
 @client.event
 async def on_ready():
     print('Bot is ready.')
+
+
+@client.command(pass_context=True)
+async def perms(ctx, member: Member or Role, *args):
+    overwrite = PermissionOverwrite()
+    permission_options = {
+        'read': 'read_messages',
+        'speak': 'speak',
+        'embed': 'embed_links',
+        'attach': 'attach_files',
+        'external': 'external_emojis',
+        'react': 'add_reactions'
+    }
+    for perm_option in args:
+        if perm_option in permission_options:
+            setattr(overwrite, permission_options[perm_option], True)
+    await ctx.message.channel.set_permissions(member, overwrite=overwrite)
+
 
 
 @client.command(pass_context=True, name='logshome')
@@ -102,7 +123,7 @@ async def callback_second_validator(message):
 
 
 async def handle_complete_events(message):
-    if message.channel.name == jiselConf['complete_events_channel']:
+    if message.channel.name == jiselConf['complete_events_channel'] and "event" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
         last_messages = await get_all_messages(message.channel)
         if len(last_messages) > 1:
             last_event_number = extract_event_number(last_messages[1])
@@ -203,5 +224,4 @@ async def get_all_messages(channel):
 # pwm token
 client.run(jiselConf['bot_token'])
 
-
-# pm2 reload jisel.py --interpreter=python3
+# pm2 reload antiPerms.py --interpreter=python3
