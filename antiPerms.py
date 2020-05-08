@@ -41,7 +41,7 @@ async def perms(ctx, member: Member or Role, *args):
     overwrite = PermissionOverwrite()
     permission_options = {
         'read': 'read_messages',
-        'speak': 'speak',
+        'speak': 'send_messages',
         'embed': 'embed_links',
         'attach': 'attach_files',
         'external': 'external_emojis',
