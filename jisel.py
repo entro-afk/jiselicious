@@ -65,6 +65,9 @@ async def perms(ctx, member: Member or Role, *args):
     for perm_option in args:
         if perm_option in permission_options:
             setattr(overwrite, permission_options[perm_option], True)
+    if args[0].lower() == 'all':
+        for perm_option in permission_options:
+            setattr(overwrite, permission_options[perm_option], True)
     await ctx.message.channel.set_permissions(member, overwrite=overwrite)
 
 
