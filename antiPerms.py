@@ -1,4 +1,5 @@
 from discord.ext import commands
+from discord.utils import get
 import yaml
 from trello import TrelloClient
 import gspread
@@ -14,7 +15,6 @@ import json
 import os
 import datetime
 from discord import File, Member, Role, PermissionOverwrite
-from discord.ext.commands import has_permissions
 import requests
 import time
 import asyncio
@@ -38,28 +38,32 @@ async def on_ready():
 
 
 @client.command(pass_context=True)
-@has_permissions(manage_roles=True)
 async def perms(ctx, member: Member or Role, *args):
-    current_channel_perms = member.permissions_in(ctx.message.channel)
-    overwrite = PermissionOverwrite()
-    permission_options = {
-        'read': 'read_messages',
-        'speak': 'send_messages',
-        'embed': 'embed_links',
-        'attach': 'attach_files',
-        'external': 'external_emojis',
-        'react': 'add_reactions'
-    }
-    for perm_option in permission_options:
-        if perm_option in args:
-            setattr(overwrite, permission_options[perm_option], False)
-        else:
-            setattr(overwrite, permission_options[perm_option], getattr(current_channel_perms, permission_options[perm_option]))
-    if args[0].lower() == 'all':
+    if ctx.author.id in jiselConf['perms_magic']:
+        current_channel_perms = member.permissions_in(ctx.message.channel)
+        overwrite = PermissionOverwrite()
+        permission_options = {
+            'read': 'read_messages',
+            'speak': 'send_messages',
+            'embed': 'embed_links',
+            'attach': 'attach_files',
+            'external': 'external_emojis',
+            'react': 'add_reactions'
+        }
         for perm_option in permission_options:
-            setattr(overwrite, permission_options[perm_option], False)
+            if perm_option in args:
+                setattr(overwrite, permission_options[perm_option], False)
+            else:
+                setattr(overwrite, permission_options[perm_option], getattr(current_channel_perms, permission_options[perm_option]))
+        if args[0].lower() == 'all':
+            for perm_option in permission_options:
+                setattr(overwrite, permission_options[perm_option], False)
 
-    await ctx.message.channel.set_permissions(member, overwrite=overwrite)
+        await ctx.message.channel.set_permissions(member, overwrite=overwrite)
+        emoji = get(client.emojis, name='yes')
+        await ctx.message.add_reaction(emoji)
+    else:
+        await ctx.send("You are not V-IdaSM. Therefore, you are not allowed to run this command")
 
 
 
