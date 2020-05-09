@@ -14,6 +14,7 @@ import json
 import os
 import datetime
 from discord import File, Member, Role, PermissionOverwrite
+from discord.ext.commands import has_permissions
 import requests
 import time
 import asyncio
@@ -52,7 +53,9 @@ async def on_ready():
 
 
 @client.command(pass_context=True)
+@has_permissions(manage_roles=True)
 async def perms(ctx, member: Member or Role, *args):
+    current_channel_perms = member.permissions_in(ctx.message.channel)
     overwrite = PermissionOverwrite()
     permission_options = {
         'read': 'read_messages',
@@ -62,12 +65,15 @@ async def perms(ctx, member: Member or Role, *args):
         'external': 'external_emojis',
         'react': 'add_reactions'
     }
-    for perm_option in args:
-        if perm_option in permission_options:
+    for perm_option in permission_options:
+        if perm_option in args:
             setattr(overwrite, permission_options[perm_option], True)
+        else:
+            setattr(overwrite, permission_options[perm_option], getattr(current_channel_perms, permission_options[perm_option]))
     if args[0].lower() == 'all':
         for perm_option in permission_options:
             setattr(overwrite, permission_options[perm_option], True)
+
     await ctx.message.channel.set_permissions(member, overwrite=overwrite)
 
 
