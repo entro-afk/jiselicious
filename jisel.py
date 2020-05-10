@@ -47,10 +47,15 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog']
 gc = gspread.authorize(credentials)
 
 
+async def emoji_success_feedback(message):
+    emoji = get(client.emojis, name='yes')
+    await message.add_reaction(emoji)
+
 
 @client.command(pass_context=True)
 async def perms(ctx, member: Member or Role, *args):
     if ctx.author.id in jiselConf['perms_magic']:
+        await emoji_success_feedback(ctx.message)
         current_channel_perms = member.permissions_in(ctx.message.channel)
         overwrite = PermissionOverwrite()
         permission_options = {
@@ -75,6 +80,7 @@ async def perms(ctx, member: Member or Role, *args):
         await ctx.message.add_reaction(emoji)
     else:
         await ctx.send("You are not V-IdaSM. Therefore, you are not allowed to run this command")
+
 
 @client.command(pass_context=True, name='code')
 async def get_codes(ctx, *args):
@@ -101,6 +107,8 @@ async def get_codes(ctx, *args):
                         if prefixes_needed is None:
                             break
         await ctx.author.send("These are your codes:\n" + "   ".join(codes_obtained))
+        if prefixes_needed:
+            await ctx.author.send(f"We either don't have or ran out of the following code types:\n{'   '.join(prefixes_needed)}")
 
 @client.command(pass_context=True, name='logshome')
 async def get_homestead_alarms_log(ctx):
