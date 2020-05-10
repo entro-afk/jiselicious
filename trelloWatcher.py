@@ -52,6 +52,7 @@ async def on_ready():
     print('Bot is ready.')
     while True:
         try:
+            await asyncio.sleep(300.0)
             await check_if_reminder_needed()
         except Exception as err:
             print(err)
