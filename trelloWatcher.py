@@ -52,8 +52,8 @@ async def on_ready():
     print('Bot is ready.')
     while True:
         try:
-            await asyncio.sleep(300.0)
             await check_if_reminder_needed()
+            await asyncio.sleep(30.0)
         except Exception as err:
             print(err)
 
@@ -69,13 +69,11 @@ async def check_if_reminder_needed():
             select_st = select([trello_hoster_cards_table])
             res = conn.execute(select_st)
             for _row in res:
-                print(_row)
                 try:
                     card = trello_client.get_card(_row[0])
                     card_actions = card.fetch_actions(action_filter="updateCard")
-                    future = datetime.datetime.now() + datetime.timedelta(seconds=300)
-                    print(card_actions)
-                    past = datetime.datetime.now() - datetime.timedelta(seconds=300)
+                    future = datetime.datetime.now() + datetime.timedelta(seconds=600)
+                    past = datetime.datetime.now() - datetime.timedelta(seconds=600)
                     for card_action in card_actions:
                         eastern_time_card = dateutil.parser.parse(card_action['date']).astimezone(pytz.timezone('US/Eastern')).replace(tzinfo=None)
                         if 'listBefore' in card_action['data'] and 'listAfter' in card_action['data'] and past < eastern_time_card and eastern_time_card< future:
