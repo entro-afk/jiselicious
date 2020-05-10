@@ -55,7 +55,6 @@ async def emoji_success_feedback(message):
 @client.command(pass_context=True)
 async def perms(ctx, member: Member or Role, *args):
     if ctx.author.id in jiselConf['perms_magic']:
-        await emoji_success_feedback(ctx.message)
         current_channel_perms = member.permissions_in(ctx.message.channel)
         overwrite = PermissionOverwrite()
         permission_options = {
@@ -85,6 +84,7 @@ async def perms(ctx, member: Member or Role, *args):
 @client.command(pass_context=True, name='code')
 async def get_codes(ctx, *args):
     if ctx.author.id in jiselConf['event_codes_team']:
+        await emoji_success_feedback(ctx.message)
         titles_list = []
         for spreadsheet in gc.openall():
             titles_list.append(spreadsheet)
