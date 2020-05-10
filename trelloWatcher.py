@@ -53,7 +53,7 @@ async def on_ready():
     while True:
         try:
             await check_if_reminder_needed()
-            await asyncio.sleep(30.0)
+            await asyncio.sleep(3.0)
         except Exception as err:
             print(err)
 
