@@ -88,9 +88,10 @@ async def check_if_reminder_needed():
                                 if card_action['memberCreator']['id'] in jiselConf['trello']['special_sender_ids']:
                                     code_giver = client.get_user(jiselConf['trello']['trello_discord_id_pair'][card_action['memberCreator']['id']])
                                     hoster_receiving_codes = client.get_user(_row[2])
-                                    embed = Embed(title=f"You have sent {hoster_receiving_codes} the following codes", description=card.description, color=0x00ff00)
-                                    await code_giver.send(card.description, embed=embed)
-                                    await hoster_receiving_codes.send(f"{code_giver.name} has prepared codes for your request:\n{card.description}", embed=embed)
+                                    embed = Embed(title=f"You have sent {hoster_receiving_codes} the following codes:", description=card.description, color=0x00ff00)
+                                    await code_giver.send(embed=embed)
+                                    hoster_embed = Embed(title=f"{code_giver.name} has prepared codes for your request:", description=card.description, color=0x00ff00)
+                                    await hoster_receiving_codes.send(embed=hoster_embed)
                                     insert_statement = trello_hoster_cards_archive.insert().values(cardID=_row[0], messageID=_row[1], requestingHosterID=_row[2])
                                     conn.execute(insert_statement)
                                     delete_entry = trello_hoster_cards_table.delete().where(
