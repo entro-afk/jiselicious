@@ -77,15 +77,11 @@ async def check_if_reminder_needed():
                     for card_action in card_actions:
                         eastern_time_card = dateutil.parser.parse(card_action['date']).astimezone(pytz.timezone('US/Eastern')).replace(tzinfo=None)
                         if 'listBefore' in card_action['data'] and 'listAfter' in card_action['data'] and past < eastern_time_card and eastern_time_card< future:
-                            print("so far this is working-----")
                             if card_action['data']['listBefore']['id'] == jiselConf['trello']['list_id'] and card_action['data']['listAfter']['id'] == jiselConf['trello']['code_sent_list_id']:
-                                print('existing id also working----')
                                 guild = client.get_guild(jiselConf['guild_id'])
-                                print('able to get guild id----')
                                 channel = get(guild.text_channels, name=jiselConf['event_request_channel'][0])
-                                print('able to get channel')
-                                print(channel)
-                    #             msg = await channel.fetch_message(_row[1])
+                                msg = await channel.fetch_message(_row[1])
+                                print('able to get message-----')
                     #             emoji = get(client.emojis, name='yes')
                     #             await msg.add_reaction(emoji)
                     #             if card_action['memberCreator']['id'] in jiselConf['trello']['special_sender_ids']:
