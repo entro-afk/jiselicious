@@ -14,7 +14,7 @@ from sqlalchemy import *
 import json
 import os
 import datetime
-from discord import File, Member, Role, PermissionOverwrite
+from discord import File, Member, Role, PermissionOverwrite, ChannelType
 import requests
 import time
 import asyncio
@@ -76,6 +76,31 @@ async def perms(ctx, member: Member or Role, *args):
     else:
         await ctx.send("You are not V-IdaSM. Therefore, you are not allowed to run this command")
 
+@client.command(pass_context=True, name='code')
+async def get_codes(ctx, *args):
+    if ctx.author.id in jiselConf['event_codes_team']:
+        titles_list = []
+        for spreadsheet in gc.openall():
+            titles_list.append(spreadsheet)
+        res_sheets = gc.list_spreadsheet_files()
+        codes_wks = gc.open("PWM Discord - Event Codes (Fixed for Jiselicious)").worksheet("Hosters")
+
+        data = codes_wks.get_all_values()
+        headers = data[0]
+        prefixes_needed = list(args)
+        codes_obtained = []
+        print(data)
+        for r in range(len(data)):
+            for c in range(len(data[r])):
+                for prefix in list(prefixes_needed):
+                    if data[r][c].startswith(prefix) and len(data[r][c]) == 8 and data[r][c] not in codes_obtained:
+                        codes_obtained.append(data[r][c])
+                        prefixes_needed.remove(prefix)
+                        value_here = codes_wks.cell(r+1, c+1).value
+                        codes_wks.update_cell(r+1, c+1, " ")
+                        if prefixes_needed is None:
+                            break
+        await ctx.author.send("These are your codes:\n" + "   ".join(codes_obtained))
 
 @client.command(pass_context=True, name='logshome')
 async def get_homestead_alarms_log(ctx):
@@ -131,7 +156,7 @@ async def callback_second_validator(message):
 
 
 async def handle_complete_events(message):
-    if message.channel.name == jiselConf['complete_events_channel'] and "event" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
+    if message.channel.type == ChannelType.text and message.channel.name == jiselConf['complete_events_channel'] and "event" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
         last_messages = await get_all_messages(message.channel)
         if len(last_messages) > 1:
             last_event_number = extract_event_number(last_messages[1])
@@ -140,7 +165,7 @@ async def handle_complete_events(message):
                 await event_number_validator(last_messages[0], last_event_number, current_event_number)
 
 async def handle_request_event(message):
-    if message.channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.clean_content.upper() or message.clean_content.upper().startswith("Server".upper())):
+    if message.channel.type == ChannelType.text and message.channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.clean_content.upper() or message.clean_content.upper().startswith("Server".upper())):
         board = trello_client.get_board(jiselConf['trello']['board_id'])
         request_list = board.get_list(jiselConf['trello']['list_id'])
         new_card = request_list.add_card(message.author.nick or message.author.name, message.clean_content)
@@ -164,7 +189,7 @@ async def handle_request_event(message):
 
 
 async def handle_bug_report(message):
-    if message.channel.name in ["bug-report","event-submissions"]:
+    if message.channel.type == ChannelType.text and message.channel.name in ["bug-report","event-submissions"]:
         wks = gc.open("PWM bug report chart").worksheet("Hoja 1")
 
         data = wks.get_all_values()
