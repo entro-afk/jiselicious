@@ -47,10 +47,6 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog']
 gc = gspread.authorize(credentials)
 
 
-@client.event
-async def on_ready():
-    print('Bot is ready.')
-
 
 @client.command(pass_context=True)
 async def perms(ctx, member: Member or Role, *args):
@@ -147,7 +143,24 @@ async def handle_request_event(message):
     if message.channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.clean_content.upper() or message.clean_content.upper().startswith("Server".upper())):
         board = trello_client.get_board(jiselConf['trello']['board_id'])
         request_list = board.get_list(jiselConf['trello']['list_id'])
-        request_list.add_card(message.author.nick or message.author.name, message.clean_content)
+        new_card = request_list.add_card(message.author.nick or message.author.name, message.clean_content)
+        db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+        db = create_engine(db_string)
+        metadata = MetaData(schema="pwm")
+
+        try:
+            with db.connect() as conn:
+                trello_hoster_cards_table = Table('trelloHosterCards', metadata, autoload=True, autoload_with=conn)
+                insert_statement = trello_hoster_cards_table.insert().values(cardID=new_card.id, messageID=message.id, requestingHosterID=message.author.id)
+                conn.execute(insert_statement)
+                select_st = select([trello_hoster_cards_table])
+                res = conn.execute(select_st)
+        except Exception as err:
+            print(err)
+            if conn:
+                conn.close()
+            db.dispose()
+
 
 
 async def handle_bug_report(message):
@@ -199,7 +212,7 @@ async def main(message):
     await asyncio.gather(
         handle_complete_events(message),
         handle_request_event(message),
-        handle_bug_report(message)
+        handle_bug_report(message),
     )
     # asyncio.ensure_future(handle_complete_events(message))
     # asyncio.ensure_future(handle_request_event(message))
@@ -237,3 +250,5 @@ async def get_all_messages(channel):
 client.run(jiselConf['bot_token'])
 
 # pm2 reload antiPerms.py --interpreter=python3
+
+
