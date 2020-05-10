@@ -88,11 +88,9 @@ async def get_codes(ctx, *args):
         titles_list = []
         for spreadsheet in gc.openall():
             titles_list.append(spreadsheet)
-        res_sheets = gc.list_spreadsheet_files()
         codes_wks = gc.open("PWM Discord - Event Codes (Fixed for Jiselicious)").worksheet("Hosters")
 
         data = codes_wks.get_all_values()
-        headers = data[0]
         prefixes_needed = list(args)
         codes_obtained = []
         for r in range(len(data)):
@@ -101,7 +99,6 @@ async def get_codes(ctx, *args):
                     if data[r][c].startswith(prefix) and len(data[r][c]) == 8 and data[r][c] not in codes_obtained:
                         codes_obtained.append(data[r][c])
                         prefixes_needed.remove(prefix)
-                        value_here = codes_wks.cell(r+1, c+1).value
                         codes_wks.update_cell(r+1, c+1, " ")
                         if prefixes_needed is None:
                             break
