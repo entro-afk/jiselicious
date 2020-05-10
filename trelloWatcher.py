@@ -80,8 +80,11 @@ async def check_if_reminder_needed():
                             print("so far this is working-----")
                             if card_action['data']['listBefore']['id'] == jiselConf['trello']['list_id'] and card_action['data']['listAfter']['id'] == jiselConf['trello']['code_sent_list_id']:
                                 print('existing id also working----')
-                    #             guild = client.get_guild(jiselConf['guild_id'])
-                    #             channel = get(guild.text_channels, name=jiselConf['event_request_channel'][0])
+                                guild = client.get_guild(jiselConf['guild_id'])
+                                print('able to get guild id----')
+                                channel = get(guild.text_channels, name=jiselConf['event_request_channel'][0])
+                                print('able to get channel')
+                                print(channel)
                     #             msg = await channel.fetch_message(_row[1])
                     #             emoji = get(client.emojis, name='yes')
                     #             await msg.add_reaction(emoji)
