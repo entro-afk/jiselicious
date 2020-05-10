@@ -72,8 +72,8 @@ async def check_if_reminder_needed():
                 try:
                     card = trello_client.get_card(_row[0])
                     card_actions = card.fetch_actions(action_filter="updateCard")
-                    future = datetime.datetime.now() + datetime.timedelta(seconds=600)
-                    past = datetime.datetime.now() - datetime.timedelta(seconds=600)
+                    future = datetime.datetime.now() + datetime.timedelta(seconds=300)
+                    past = datetime.datetime.now() - datetime.timedelta(seconds=300)
                     for card_action in card_actions:
                         eastern_time_card = dateutil.parser.parse(card_action['date']).astimezone(pytz.timezone('US/Eastern')).replace(tzinfo=None)
                         if 'listBefore' in card_action['data'] and 'listAfter' in card_action['data'] and past < eastern_time_card and eastern_time_card< future:
@@ -85,8 +85,8 @@ async def check_if_reminder_needed():
                                 print('able to get message-----')
                                 emoji = get(client.emojis, name='yes')
                                 await msg.add_reaction(emoji)
-                                if card_action['memberCreator']['id'] in jiselConf['trello']['special_sender_ids']:
-                                    code_giver = client.get_user(jiselConf['trello']['trello_discord_id_pair'][card_action['memberCreator']['id']])
+                                if card_action['memberCreator']['username'] in jiselConf['trello']['special_sender_usernames']:
+                                    code_giver = client.get_user(jiselConf['trello']['trello_discord_id_pair'][card_action['memberCreator']['username']])
                                     hoster_receiving_codes = client.get_user(_row[2])
                                     embed = Embed(title=f"You have sent {hoster_receiving_codes} the following codes:", description=card.description, color=0x00ff00)
                                     await code_giver.send(embed=embed)
