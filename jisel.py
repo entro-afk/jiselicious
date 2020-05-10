@@ -95,7 +95,6 @@ async def get_codes(ctx, *args):
         headers = data[0]
         prefixes_needed = list(args)
         codes_obtained = []
-        print(data)
         for r in range(len(data)):
             for c in range(len(data[r])):
                 for prefix in list(prefixes_needed):
