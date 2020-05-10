@@ -80,24 +80,25 @@ async def check_if_reminder_needed():
                             if card_action['data']['listBefore']['id'] == jiselConf['trello']['list_id'] and card_action['data']['listAfter']['id'] == jiselConf['trello']['code_sent_list_id']:
                                 guild = client.get_guild(jiselConf['guild_id'])
                                 channel = get(guild.text_channels, name=jiselConf['event_request_channel'][0])
+                                print(_row[1])
                                 msg = await channel.fetch_message(_row[1])
                                 print('able to get message-----')
-                    #             emoji = get(client.emojis, name='yes')
-                    #             await msg.add_reaction(emoji)
-                    #             if card_action['memberCreator']['id'] in jiselConf['trello']['special_sender_ids']:
-                    #                 code_giver = client.get_user(jiselConf['trello']['trello_discord_id_pair'][card_action['memberCreator']['id']])
-                    #                 hoster_receiving_codes = client.get_user(_row[2])
-                    #                 embed = Embed(title=f"You have sent {hoster_receiving_codes} the following codes", description=card.description, color=0x00ff00)
-                    #                 await code_giver.send(card.description, embed=embed)
-                    #                 await hoster_receiving_codes.send(f"{code_giver.name} has prepared codes for your request:\n{card.description}", embed=embed)
-                    #                 insert_statement = trello_hoster_cards_archive.insert().values(cardID=_row[0], messageID=_row[1], requestingHosterID=_row[2])
-                    #                 conn.execute(insert_statement)
-                    #                 delete_entry = trello_hoster_cards_table.delete().where(
-                    #                     and_(
-                    #                         trello_hoster_cards_table.c.cardID == _row[0],
-                    #                     )
-                    #                 )
-                    #                 conn.execute(delete_entry)
+                                emoji = get(client.emojis, name='yes')
+                                await msg.add_reaction(emoji)
+                                if card_action['memberCreator']['id'] in jiselConf['trello']['special_sender_ids']:
+                                    code_giver = client.get_user(jiselConf['trello']['trello_discord_id_pair'][card_action['memberCreator']['id']])
+                                    hoster_receiving_codes = client.get_user(_row[2])
+                                    embed = Embed(title=f"You have sent {hoster_receiving_codes} the following codes", description=card.description, color=0x00ff00)
+                                    await code_giver.send(card.description, embed=embed)
+                                    await hoster_receiving_codes.send(f"{code_giver.name} has prepared codes for your request:\n{card.description}", embed=embed)
+                                    insert_statement = trello_hoster_cards_archive.insert().values(cardID=_row[0], messageID=_row[1], requestingHosterID=_row[2])
+                                    conn.execute(insert_statement)
+                                    delete_entry = trello_hoster_cards_table.delete().where(
+                                        and_(
+                                            trello_hoster_cards_table.c.cardID == _row[0],
+                                        )
+                                    )
+                                    conn.execute(delete_entry)
                 except exceptions.ResourceUnavailable:
                     delete_entry = trello_hoster_cards_table.delete().where(
                         and_(
