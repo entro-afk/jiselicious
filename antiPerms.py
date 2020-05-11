@@ -40,7 +40,7 @@ async def on_ready():
 @client.command(pass_context=True)
 async def perms(ctx, member: Union[Member, Role], *args) :
     if ctx.author.id in jiselConf['perms_magic']:
-        current_channel_perms = hasattr(member, 'permissions_in') and member.permissions_in(ctx.message.channel) or member.permissions
+        current_channel_perms = hasattr(member, 'permissions_in') and member.permissions_in(ctx.message.channel) or member.members[0].permissions_in(ctx.message.channel)
         overwrite = PermissionOverwrite()
         permission_options = {
             'read': 'read_messages',
