@@ -102,7 +102,7 @@ async def get_codes(ctx, *args):
                         codes_wks.update_cell(r+1, c+1, " ")
                         if prefixes_needed is None:
                             break
-        await ctx.author.send("These are your codes:\n" + "   ".join(codes_obtained))
+        await ctx.author.send("These are your codes:\n" + "       ".join(codes_obtained))
         if prefixes_needed:
             await ctx.author.send(f"We either don't have or ran out of the following code types:\n{'   '.join(prefixes_needed)}")
 
