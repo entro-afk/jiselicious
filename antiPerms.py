@@ -44,11 +44,20 @@ async def perms(ctx, member: Member or Role, *args):
         overwrite = PermissionOverwrite()
         permission_options = {
             'read': 'read_messages',
-            'speak': 'send_messages',
+            'send': 'send_messages',
             'embed': 'embed_links',
             'attach': 'attach_files',
             'external': 'external_emojis',
-            'react': 'add_reactions'
+            'react': 'add_reactions',
+            'cinvite': 'create_instant_invite',
+            'mchannel': 'manage_channels',
+            'mperm': 'manage_roles',
+            'mweb': 'manage_webhooks',
+            'TTS': 'send_tts_messages',
+            'mmsg': 'manage_messages',
+            'rhistory': 'read_message_history',
+            'mention': 'mention_everyone',
+            'exreact': 'external_emojis'
         }
         for perm_option in permission_options:
             if perm_option in args:
