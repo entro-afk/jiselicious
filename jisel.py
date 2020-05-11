@@ -19,7 +19,7 @@ import requests
 import time
 import asyncio
 import threading
-
+from typing import Union
 
 client = commands.Bot(command_prefix='+')
 
@@ -53,9 +53,9 @@ async def emoji_success_feedback(message):
 
 
 @client.command(pass_context=True)
-async def perms(ctx, member: Member or Role, *args):
+async def perms(ctx, member: Union[Member, Role], *args) :
     if ctx.author.id in jiselConf['perms_magic']:
-        current_channel_perms = member.permissions_in(ctx.message.channel)
+        current_channel_perms = hasattr(member, 'permissions_in') and member.permissions_in(ctx.message.channel) or member.permissions
         overwrite = PermissionOverwrite()
         permission_options = {
             'read': 'read_messages',
