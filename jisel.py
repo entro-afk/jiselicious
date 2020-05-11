@@ -96,7 +96,7 @@ async def get_codes(ctx, *args):
         for r in range(len(data)):
             for c in range(len(data[r])):
                 for prefix in list(prefixes_needed):
-                    if data[r][c].startswith(prefix) and len(data[r][c]) == 8 and data[r][c] not in codes_obtained:
+                    if data[r][c].startswith(prefix.upper()) and len(data[r][c]) == 8 and data[r][c] not in codes_obtained:
                         codes_obtained.append(data[r][c])
                         prefixes_needed.remove(prefix)
                         codes_wks.update_cell(r+1, c+1, " ")
