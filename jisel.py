@@ -20,6 +20,7 @@ import time
 import asyncio
 import threading
 from typing import Union
+from remoteGoogImage import detect_text_uri
 
 client = commands.Bot(command_prefix='+')
 
@@ -50,6 +51,14 @@ gc = gspread.authorize(credentials)
 async def emoji_success_feedback(message):
     emoji = get(client.emojis, name='yes')
     await message.add_reaction(emoji)
+
+async def emoji_loading_feedback(message):
+    emoji = get(client.emojis, name='loading')
+    await message.add_reaction(emoji)
+
+async def remove_loading_feedback(message):
+    emoji = get(client.emojis, name='loading')
+    await message.remove_reaction(emoji, client.user)
 
 
 @client.command(pass_context=True)
@@ -90,6 +99,19 @@ async def perms(ctx, member: Union[Member, Role], *args) :
         await ctx.send("You are not V-IdaSM. Therefore, you are not allowed to run this command")
 
 
+@client.command(pass_context=True, name='findcode')
+async def find_code_in_pics(ctx, event_code):
+    await emoji_loading_feedback(ctx.message)
+    msg_link = await find_message_with_code(ctx.message.channel, event_code)
+    if msg_link:
+        await remove_loading_feedback(ctx.message)
+        await emoji_success_feedback(ctx.message)
+        await ctx.channel.send(msg_link)
+    else:
+        await remove_loading_feedback(ctx.message)
+        await ctx.channel.send(f"We could not find {event_code} in the last 500 pictures")
+
+
 @client.command(pass_context=True, name='code')
 async def get_codes(ctx, *args):
     if ctx.author.id in jiselConf['event_codes_team']:
@@ -114,6 +136,7 @@ async def get_codes(ctx, *args):
         await ctx.author.send("These are your codes:\n" + "       ".join(codes_obtained))
         if prefixes_needed:
             await ctx.author.send(f"We either don't have or ran out of the following code types:\n{'   '.join(prefixes_needed)}")
+
 
 @client.command(pass_context=True, name='logshome')
 async def get_homestead_alarms_log(ctx):
@@ -281,6 +304,31 @@ async def get_all_messages(channel):
             events.append(message)
     return events
 
+
+def find_code_in_gyazo_links(message, event_code):
+    gyazo_links = []
+    message_split_into_lines = message.clean_content.split("\n")
+    for line in message_split_into_lines:
+        if "gyazo.com" in line.lower():
+            code_uri = line.split("/")[-1]
+            try:
+                image_url = gyazo_client.get_image(re.sub(f'https://gyazo.com/', '', code_uri)).url
+                text_detected = detect_text_uri(image_url)
+                if event_code in text_detected:
+                    return line
+            except:
+                continue
+    return None
+
+async def find_message_with_code(channel, event_code):
+    events = []
+    async for message in channel.history(limit=500):
+        if message.author.id != client.user.id:
+            if "gyazo.com" in message.clean_content:
+                if find_code_in_gyazo_links(message, event_code) is not None:
+                    return message.jump_url
+            events.append(message)
+    return None
 
 # test token
 # client.run(channelsConf['test_bot_token'])
