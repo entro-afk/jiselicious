@@ -283,7 +283,7 @@ async def check_if_valid_navi_message(message):
 
 
 async def handle_navi_report(message):
-    if message.channel.type == ChannelType.text and message.channel.name in ["navigators-chat", "bots"]:
+    if message.channel.type == ChannelType.text and message.channel.name in ["navigators-chat2"]:
         is_valid = await check_if_valid_navi_message(message)
         if not is_valid and not (message.clean_content == "" and message.attachments):
             await message.delete()
