@@ -225,7 +225,7 @@ async def handle_request_event(message):
 
 
 async def handle_bug_report(message):
-    if message.channel.type == ChannelType.text and message.channel.name in ["bug-report","event-submissions"]:
+    if message.channel.type == ChannelType.text and message.channel.name in ["bug-report"]:
         wks = gc.open("PWM bug report chart").worksheet("Hoja 1")
 
         data = wks.get_all_values()
@@ -283,7 +283,7 @@ async def check_if_valid_navi_message(message):
 
 
 async def handle_navi_report(message):
-    if message.channel.type == ChannelType.text and message.channel.name in ["navigators-chat"]:
+    if message.channel.type == ChannelType.text and message.channel.name in ["navigators-chat", "bots"]:
         is_valid = await check_if_valid_navi_message(message)
         if not is_valid and not (message.clean_content == "" and message.attachments):
             await message.delete()
