@@ -269,15 +269,73 @@ async def handle_bug_report(message):
                         row = ["Continuation", "", "", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
                         wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
 
+
+async def check_if_valid_navi_message(message):
+    if len(message.clean_content.split("\n")) != 3:
+        return False
+    if not message.clean_content.startswith("Questioner:".lower()):
+        return False
+    if not message.clean_content.split("\n")[1].startswith("Question Details:".lower()):
+        return False
+    if not message.clean_content.split("\n")[2].startswith("Screenshot:".lower()):
+        return False
+    return True
+
+
+async def handle_navi_report(message):
+    if message.channel.type == ChannelType.text and message.channel.name in ["navigators-chat"]:
+        is_valid = await check_if_valid_navi_message(message)
+        if not is_valid and not (message.clean_content == "" and message.attachments):
+            await message.delete()
+            await message.channel.send(f"<@{message.author.id}>, you did not upload your report in the correct format so it has been deleted. Please upload your report in this format so we can parse it into the database:")
+            await message.channel.send("Questioner: \nQuestion Details: \nScreenshot:")
+            await message.delete()
+
+        if is_valid or (message.clean_content == "" and message.attachments):
+            wks = gc.open("PWM Navigators Report").worksheet("Sheet1")
+
+            data = wks.get_all_values()
+            headers = data[0]
+
+            df = pd.DataFrame(data, columns=headers)
+            print(df.head())
+            if message.clean_content.lower().startswith("Questioner:".lower()):
+                split_text = message.clean_content.rstrip("\n\r").split("\n")
+                questioner = re.sub("Questioner:", '', split_text[0]).strip()
+                question_details = re.sub("Question Details:", '', split_text[1]).strip()
+                screenshot = re.sub("Screenshot:", '', split_text[2]).strip()
+                row = [message.author.name, questioner, question_details]
+                if "gyazo" in screenshot:
+                    if screenshot.startswith("https://gyazo.com/"):
+                        image_url = gyazo_client.get_image(re.sub(f'https://gyazo.com/', '', screenshot)).url
+                        file_ext = image_url.split(".")[-1]
+                        row.append(f"=IMAGE(\"{re.sub(file_ext, file_ext.upper(), image_url)}\")")
+                        wks.insert_row(row, df.shape[0] + 2, value_input_option='USER_ENTERED')
+                elif message.attachments:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(message.attachments[0].url) as r:
+                            if r.status == 200:
+                                result = await r.read()
+                                row.append(f"=IMAGE(\"{message.attachments[0].url}\")")
+                                wks.insert_row(row, df.shape[0] + 2, value_input_option='USER_ENTERED')
+                else:
+                    row.append(screenshot)
+                    wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
+            elif message.attachments:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(message.attachments[0].url) as r:
+                        if r.status == 200:
+                            row = ["Continuation", "", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
+                            wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
+
 async def main(message):
     await asyncio.gather(
         handle_complete_events(message),
         handle_request_event(message),
         handle_bug_report(message),
+        handle_navi_report(message)
     )
-    # asyncio.ensure_future(handle_complete_events(message))
-    # asyncio.ensure_future(handle_request_event(message))
-    # asyncio.ensure_future(handle_bug_report(message))
+
 
 @client.event
 async def on_message(message):
