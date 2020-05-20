@@ -297,7 +297,7 @@ async def handle_navi_report(ctx):
                 async with aiohttp.ClientSession() as session:
                     async with session.get(ctx.message.attachments[i].url) as r:
                         if r.status == 200:
-                            row = [ctx.message.author.name, f"=IMAGE(\"{ctx.message.attachments[i].url}\")"]
+                            row = [ctx.message.author.name, f"=IMAGE(\"{ctx.message.attachments[i].url}\")", datetime.datetime.today().strftime('%Y-%m-%d-%H:%M:%S')]
                             wks.insert_row(row, df.shape[0] + 1 + i, value_input_option='USER_ENTERED')
             await emoji_success_feedback(ctx.message)
 
