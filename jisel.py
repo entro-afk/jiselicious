@@ -21,7 +21,7 @@ import asyncio
 import threading
 from typing import Union
 from remoteGoogImage import detect_text_uri
-
+import pytz
 client = commands.Bot(command_prefix='+')
 
 
@@ -136,6 +136,34 @@ async def get_codes(ctx, *args):
         await ctx.author.send("These are your codes:\n" + "       ".join(codes_obtained))
         if prefixes_needed:
             await ctx.author.send(f"We either don't have or ran out of the following code types:\n{'   '.join(prefixes_needed)}")
+
+
+@client.command(pass_context=True, name='timechannel')
+async def create_time_channel(ctx, person, timezone_for_person):
+    guild = ctx.message.guild
+    # current_datetime = datetime.datetime.today().now(pytz.timezone('Etc/GMT-2'))
+    current_datetime = datetime.datetime.today().now(pytz.timezone(timezone_for_person))
+    channel_name = f"🕰️ {person}'s time: {current_datetime.strftime('%H:%M')}"
+    overwrite = {
+        guild.default_role: PermissionOverwrite(connect=False)
+    }
+    new_time_channel = await guild.create_voice_channel(channel_name, overwrites=overwrite)
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+
+    try:
+        with db.connect() as conn:
+            person_channel_time_table = Table('timeChannels', metadata, autoload=True, autoload_with=conn)
+            insert_statement = person_channel_time_table.insert().values(channelName=channel_name, dedicatedName=person, channelID=new_time_channel.id, channelTimezone=timezone_for_person)
+            conn.execute(insert_statement)
+            select_st = select([person_channel_time_table])
+            res = conn.execute(select_st)
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
 
 
 @client.command(pass_context=True, name='logshome')
@@ -358,15 +386,75 @@ def find_code_in_gyazo_links(message, event_code):
                 continue
     return None
 
+def get_all_codes_from_gyazo_link(message):
+    detected_codes = []
+    message_split_into_lines = message.clean_content.split("\n")
+    for line in message_split_into_lines:
+        if "gyazo.com" in line.lower():
+            code_uri = line.split("/")[-1]
+            try:
+                gya_image = gyazo_client.get_image(re.sub(f'https://gyazo.com/', '', code_uri))
+                image_url = gya_image.url
+                text_detected = detect_text_uri(image_url)
+                for text in re.split(r'\n|\s', gya_image.ocr['description']):
+                    if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT"]:
+                        detected_codes.append(text)
+            except:
+                continue
+    return detected_codes
 async def find_message_with_code(channel, event_code):
     events = []
-    async for message in channel.history(limit=500):
+    async for message in channel.history(limit=100):
         if message.author.id != client.user.id:
             if "gyazo.com" in message.clean_content:
                 if find_code_in_gyazo_links(message, event_code) is not None:
                     return message.jump_url
+            elif "gyazo.com" not in message.clean_content and message.attachments:
+                print("remote ocr-ing")
             events.append(message)
+
+
+
     return None
+
+@client.command(pass_context=True, name="updatecomplete")
+async def update_complete_cards(ctx):
+    board = trello_client.get_board(jiselConf['trello']['board_id'])
+    codes_sent_list = board.get_list(jiselConf['trello']['code_sent_list_id'])
+    codes_sent_card_list = codes_sent_list.list_cards()
+    map_codes = {}
+    for card in codes_sent_card_list:
+        card_codes = []
+        for text in card.description.split(" "):
+            if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT"]:
+                card_codes.append(text)
+        map_codes[card.id] = card_codes
+
+
+
+    event_number = extract_event_number(ctx.message)
+
+
+def check_if_trello_code_in_discord(code):
+    if find_message_with_code():
+        pass
+
+def get_all_codes_from_trello_card(message):
+    detected_codes = []
+    message_split_into_lines = message.clean_content.split("\n")
+    for line in message_split_into_lines:
+        if "gyazo.com" in line.lower():
+            code_uri = line.split("/")[-1]
+            try:
+                gya_image = gyazo_client.get_image(re.sub(f'https://gyazo.com/', '', code_uri))
+                image_url = gya_image.url
+                text_detected = detect_text_uri(image_url)
+                for text in re.split(r'\n|\s', gya_image.ocr['description']):
+                    if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT"]:
+                        detected_codes.append(text)
+            except:
+                continue
+    return detected_codes
 
 # test token
 # client.run(channelsConf['test_bot_token'])
