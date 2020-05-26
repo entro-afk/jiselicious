@@ -71,13 +71,18 @@ async def check_if_which_db_time_channels_need_update():
             for _row in res:
                 former_name = _row[0]
                 now_time = datetime.datetime.today().now(pytz.timezone(_row[3])).strftime('%H:%M')
-                if _row[0] != f"🕰️ {_row[1]}'s time: {now_time}":
+                if _row[0] != f"⌚ {_row[1]}'s time: {now_time}":
                     update_statement = channel_time_table.update().values(
-                        channelName=f"🕰️ {_row[1]}'s time: {now_time}").where(channel_time_table.c.channelName != now_time)
+                        channelName=f"⌚ {_row[1]}'s time: {now_time}").where(
+                        and_(
+                            channel_time_table.c.channelName != f"⌚ {_row[1]}'s time: {now_time}",
+                            channel_time_table.c.channelID == _row[2]
+                        )
+                    )
                     res = conn.execute(update_statement)
                     guild = client.get_guild(jiselConf['guild_id'])
                     channel = get(guild.voice_channels, id=_row[2])
-                    await channel.edit(name=f"🕰️ {_row[1]}'s time: {now_time}")
+                    await channel.edit(name=f"⌚ {_row[1]}'s time: {now_time}")
         except Exception as err:
             print(err)
             if conn:

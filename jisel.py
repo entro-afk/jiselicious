@@ -143,11 +143,12 @@ async def create_time_channel(ctx, person, timezone_for_person):
     guild = ctx.message.guild
     # current_datetime = datetime.datetime.today().now(pytz.timezone('Etc/GMT-2'))
     current_datetime = datetime.datetime.today().now(pytz.timezone(timezone_for_person))
-    channel_name = f"🕰️ {person}'s time: {current_datetime.strftime('%H:%M')}"
+    channel_name = f"⌚ {person}'s time: {current_datetime.strftime('%H:%M')}"
     overwrite = {
         guild.default_role: PermissionOverwrite(connect=False)
     }
-    new_time_channel = await guild.create_voice_channel(channel_name, overwrites=overwrite)
+    staff_category = get(ctx.guild.categories, name="STAFF")
+    new_time_channel = await guild.create_voice_channel(channel_name, overwrites=overwrite, category=staff_category)
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
