@@ -64,6 +64,32 @@ async def check_if_reminder_needed():
 
     try:
         with db.connect() as conn:
+            try:
+                channel_time_table = Table('timeChannels', metadata, autoload=True, autoload_with=conn)
+                select_st = select([channel_time_table])
+                res = conn.execute(select_st)
+                for _row in res:
+                    former_name = _row[0]
+                    now_time = datetime.datetime.today().now(pytz.timezone(_row[3])).strftime('%H:%M')
+                    if _row[0] != f"⌚ {_row[1]}'s time: {now_time}":
+                        update_statement = channel_time_table.update().values(
+                            channelName=f"⌚ {_row[1]}'s time: {now_time}").where(
+                            and_(
+                                channel_time_table.c.channelName != f"⌚ {_row[1]}'s time: {now_time}",
+                                channel_time_table.c.channelID == _row[2]
+                            )
+                        )
+                        res = conn.execute(update_statement)
+                        await client.wait_until_ready()
+                        guild = client.get_guild(jiselConf['guild_id'])
+                        print(guild)
+                        print(guild.voice_channels)
+                        channel = get(guild.voice_channels, id=int(_row[2]))
+                        print(channel)
+                        await channel.edit(name=f"⌚ {_row[1]}'s time: {now_time}")
+            except Exception as err:
+                print(err)
+
             trello_hoster_cards_table = Table('trelloHosterCards', metadata, autoload=True, autoload_with=conn)
             trello_hoster_cards_archive = Table('trelloHosterCardsArchive', metadata, autoload=True, autoload_with=conn)
             select_st = select([trello_hoster_cards_table])
