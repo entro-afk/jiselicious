@@ -80,8 +80,12 @@ async def check_if_which_db_time_channels_need_update():
                         )
                     )
                     res = conn.execute(update_statement)
+                    await client.wait_until_ready()
                     guild = client.get_guild(jiselConf['guild_id'])
+                    print(guild)
+                    print(guild.voice_channels)
                     channel = get(guild.voice_channels, id=_row[2])
+                    print(channel)
                     await channel.edit(name=f"⌚ {_row[1]}'s time: {now_time}")
         except Exception as err:
             print(err)
