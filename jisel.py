@@ -145,7 +145,7 @@ async def create_time_channel(ctx, person, timezone_for_person):
     current_datetime = datetime.datetime.today().now(pytz.timezone(timezone_for_person))
     channel_name = f"⌚ {person}'s time: {current_datetime.strftime('%H:%M')}"
     overwrite = {
-        guild.default_role: PermissionOverwrite(connect=False)
+        guild.default_role: PermissionOverwrite(read_messages=False, connect=False)
     }
     staff_category = get(ctx.guild.categories, name="STAFF")
     new_time_channel = await guild.create_voice_channel(channel_name, overwrites=overwrite, category=staff_category)
