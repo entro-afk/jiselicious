@@ -82,10 +82,7 @@ async def check_if_reminder_needed():
                         res = conn.execute(update_statement)
                         await client.wait_until_ready()
                         guild = client.get_guild(jiselConf['guild_id'])
-                        print(guild)
-                        print(guild.voice_channels)
                         channel = get(guild.voice_channels, id=int(_row[2]))
-                        print(channel)
                         await channel.edit(name=f"⌚ {_row[1]}'s time: {now_time}")
             except Exception as err:
                 print(err)
@@ -108,7 +105,6 @@ async def check_if_reminder_needed():
                                 channel = get(guild.text_channels, name=jiselConf['event_request_channel'][0])
                                 print(_row[1])
                                 msg = await channel.fetch_message(_row[1])
-                                print('able to get message-----')
                                 emoji = get(client.emojis, name='yes')
                                 await msg.add_reaction(emoji)
                                 if card_action['memberCreator']['username'] in jiselConf['trello']['special_sender_usernames']:
