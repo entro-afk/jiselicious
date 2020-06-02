@@ -403,20 +403,38 @@ def get_all_codes_from_gyazo_link(message):
             except:
                 continue
     return detected_codes
-async def find_message_with_code(channel, event_code):
+async def find_message_with_codes(channel, event_code):
     events = []
-    async for message in channel.history(limit=100):
+    async for message in channel.history(limit=250):
         if message.author.id != client.user.id:
             if "gyazo.com" in message.clean_content:
                 if find_code_in_gyazo_links(message, event_code) is not None:
                     return message.jump_url
-            elif "gyazo.com" not in message.clean_content and message.attachments:
-                print("remote ocr-ing")
+
             events.append(message)
 
 
 
     return None
+
+
+async def check_messages_contains_any_codes(channel, card, event_codes):
+    event_num = 0
+    async for message in channel.history(limit=250):
+        if "event" in message.clean_content.lower() and "id" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
+            event_num = extract_event_number(message)
+        if message.author.id != client.user.id:
+            if "gyazo.com" not in message.clean_content and message.attachments:
+                print("remote ocr-ing")
+                for pic in message.attachments:
+                    text_detected = detect_text_uri(pic.url)
+                    check_if_text_includes_any_code = [code for code in event_codes if code in text_detected]
+                    if len(check_if_text_includes_any_code) > 0:
+                        card.set_description(card.description + f"\n#{event_num}")
+                        return True
+    return False
+
+
 
 @client.command(pass_context=True, name="updatecomplete")
 async def update_complete_cards(ctx):
@@ -426,19 +444,21 @@ async def update_complete_cards(ctx):
     map_codes = {}
     for card in codes_sent_card_list:
         card_codes = []
-        for text in card.description.split(" "):
-            if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT"]:
+        for text in re.split(r" \s+ |\n", card.description):
+            if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT", "GLU", "GLV", "GLW"]:
                 card_codes.append(text)
         map_codes[card.id] = card_codes
-
+        event_was_uploaded = await check_messages_contains_any_codes(ctx.channel, card, card_codes)
+        ec_logs = [t_list for t_list in board.get_lists("all") if t_list.name == 'EC-Logs'][0]
+        if event_was_uploaded:
+            card.change_list(ec_logs.id)
 
 
     event_number = extract_event_number(ctx.message)
 
 
 def check_if_trello_code_in_discord(code):
-    if find_message_with_code():
-        pass
+    pass
 
 def get_all_codes_from_trello_card(message):
     detected_codes = []
