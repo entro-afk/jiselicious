@@ -418,7 +418,7 @@ async def find_message_with_codes(channel, event_code):
     return None
 
 
-async def check_messages_contains_any_codes(channel, card, event_codes):
+async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec_logs):
     event_num = 0
     async for message in channel.history(limit=250):
         if "event" in message.clean_content.lower() and "id" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
@@ -428,11 +428,16 @@ async def check_messages_contains_any_codes(channel, card, event_codes):
                 print("remote ocr-ing")
                 for pic in message.attachments:
                     text_detected = detect_text_uri(pic.url)
-                    check_if_text_includes_any_code = [code for code in event_codes if code in text_detected]
+                    check_if_text_includes_any_code = [code for code in code_to_card_id_mapping.keys() if code in text_detected]
                     if len(check_if_text_includes_any_code) > 0:
+                        card_id = code_to_card_id_mapping[check_if_text_includes_any_code[0]]
+                        card = trello_client.get_card(card_id)
                         card.set_description(card.description + f"\n#{event_num}")
-                        return True
-    return False
+                        card.change_list(ec_logs.id)
+                        for code in code_to_card_id_mapping:
+                            if code_to_card_id_mapping[code] == card_id:
+                                del code
+
 
 
 
@@ -443,19 +448,21 @@ async def update_complete_cards(ctx):
         codes_sent_list = board.get_list(jiselConf['trello']['code_sent_list_id'])
         codes_sent_card_list = codes_sent_list.list_cards()
         map_codes = {}
+        code_to_card_id_mapping = {}
+        card_id_to_code_mapping = {}
         for card in codes_sent_card_list:
             card_codes = []
             for text in re.split(r" \s+ |\n", card.description):
                 if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT", "GLU", "GLV", "GLW"]:
                     card_codes.append(text)
+                    code_to_card_id_mapping[text] = card.id
+                    card_id_to_code_mapping[card.id] = text
             map_codes[card.id] = card_codes
-            event_was_uploaded = await check_messages_contains_any_codes(ctx.channel, card, card_codes)
-            ec_logs = [t_list for t_list in board.get_lists("all") if t_list.name == 'EC-Logs'][0]
-            if event_was_uploaded:
-                card.change_list(ec_logs.id)
-
-
-    event_number = extract_event_number(ctx.message)
+        ec_logs = [t_list for t_list in board.get_lists("all") if t_list.name == 'EC-Logs'][0]
+        await emoji_loading_feedback(ctx.message)
+        await check_messages_contains_any_codes(ctx.channel, code_to_card_id_mapping, ec_logs)
+        await remove_loading_feedback(ctx.message)
+        await emoji_success_feedback(ctx.message)
 
 
 def check_if_trello_code_in_discord(code):
