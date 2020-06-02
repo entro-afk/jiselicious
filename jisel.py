@@ -421,12 +421,12 @@ async def find_message_with_codes(channel, event_code):
 async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec_logs, start_date):
     event_num = 0
     async for message in channel.history(limit=250, oldest_first=True, after=start_date):
+        print(f"Message author:{message.author.name}   content: {message.clean_content}")
         if "event" in message.clean_content.lower() and "id" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
             event_num = extract_event_number(message)
         if message.author.id != client.user.id:
             if "gyazo.com" not in message.clean_content and message.attachments:
                 print("remote ocr-ing")
-                print(f"Message author:{message.author.name}   content: {message.clean_content}")
                 for pic in message.attachments:
                     text_detected = detect_text_uri(pic.url)
                     check_if_text_includes_any_code = [code for code in code_to_card_id_mapping.keys() if code in text_detected]
