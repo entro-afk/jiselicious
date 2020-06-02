@@ -420,7 +420,7 @@ async def find_message_with_codes(channel, event_code):
 
 async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec_logs, start_date):
     event_num = 0
-    async for message in channel.history(limit=250, oldest_first=True):
+    async for message in channel.history(limit=250, oldest_first=True, after=start_date):
         if "event" in message.clean_content.lower() and "id" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
             event_num = extract_event_number(message)
         if message.author.id != client.user.id:
