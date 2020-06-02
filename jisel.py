@@ -418,9 +418,9 @@ async def find_message_with_codes(channel, event_code):
     return None
 
 
-async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec_logs):
+async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec_logs, start_date):
     event_num = 0
-    async for message in channel.history(limit=250):
+    async for message in channel.history(limit=250, oldest_first=True):
         if "event" in message.clean_content.lower() and "id" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
             event_num = extract_event_number(message)
         if message.author.id != client.user.id:
@@ -432,17 +432,18 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
                     if len(check_if_text_includes_any_code) > 0:
                         card_id = code_to_card_id_mapping[check_if_text_includes_any_code[0]]
                         card = trello_client.get_card(card_id)
-                        card.set_description(card.description + f"\n#{event_num}")
-                        card.change_list(ec_logs.id)
-                        for code in code_to_card_id_mapping:
-                            if code_to_card_id_mapping[code] == card_id:
-                                del code
-
+                        if '#' not in card.description:
+                            card.set_description(card.description + f"\n#{event_num}")
+                            card.change_list(ec_logs.id)
 
 
 
 @client.command(pass_context=True, name="updatecomplete")
-async def update_complete_cards(ctx):
+async def update_complete_cards(ctx, start_date=""):
+    if start_date == "":
+        datetime.datetime.now() - datetime.timedelta(days=8)
+    else:
+        start_date = datetime.datetime.strptime(start_date, "%d/%m/%Y")
     if ctx.message.channel.name == jiselConf['complete_events_channel'] and ctx.author.id in jiselConf['event_codes_team']:
         board = trello_client.get_board(jiselConf['trello']['board_id'])
         codes_sent_list = board.get_list(jiselConf['trello']['code_sent_list_id'])
@@ -460,7 +461,7 @@ async def update_complete_cards(ctx):
             map_codes[card.id] = card_codes
         ec_logs = [t_list for t_list in board.get_lists("all") if t_list.name == 'EC-Logs'][0]
         await emoji_loading_feedback(ctx.message)
-        await check_messages_contains_any_codes(ctx.channel, code_to_card_id_mapping, ec_logs)
+        await check_messages_contains_any_codes(ctx.channel, code_to_card_id_mapping, ec_logs, start_date)
         await remove_loading_feedback(ctx.message)
         await emoji_success_feedback(ctx.message)
 
