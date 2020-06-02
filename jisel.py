@@ -438,20 +438,21 @@ async def check_messages_contains_any_codes(channel, card, event_codes):
 
 @client.command(pass_context=True, name="updatecomplete")
 async def update_complete_cards(ctx):
-    board = trello_client.get_board(jiselConf['trello']['board_id'])
-    codes_sent_list = board.get_list(jiselConf['trello']['code_sent_list_id'])
-    codes_sent_card_list = codes_sent_list.list_cards()
-    map_codes = {}
-    for card in codes_sent_card_list:
-        card_codes = []
-        for text in re.split(r" \s+ |\n", card.description):
-            if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT", "GLU", "GLV", "GLW"]:
-                card_codes.append(text)
-        map_codes[card.id] = card_codes
-        event_was_uploaded = await check_messages_contains_any_codes(ctx.channel, card, card_codes)
-        ec_logs = [t_list for t_list in board.get_lists("all") if t_list.name == 'EC-Logs'][0]
-        if event_was_uploaded:
-            card.change_list(ec_logs.id)
+    if ctx.message.channel.name == jiselConf['complete_events_channel'] and ctx.author.id in jiselConf['event_codes_team']:
+        board = trello_client.get_board(jiselConf['trello']['board_id'])
+        codes_sent_list = board.get_list(jiselConf['trello']['code_sent_list_id'])
+        codes_sent_card_list = codes_sent_list.list_cards()
+        map_codes = {}
+        for card in codes_sent_card_list:
+            card_codes = []
+            for text in re.split(r" \s+ |\n", card.description):
+                if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT", "GLU", "GLV", "GLW"]:
+                    card_codes.append(text)
+            map_codes[card.id] = card_codes
+            event_was_uploaded = await check_messages_contains_any_codes(ctx.channel, card, card_codes)
+            ec_logs = [t_list for t_list in board.get_lists("all") if t_list.name == 'EC-Logs'][0]
+            if event_was_uploaded:
+                card.change_list(ec_logs.id)
 
 
     event_number = extract_event_number(ctx.message)
