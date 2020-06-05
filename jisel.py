@@ -436,6 +436,7 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
                         if '#' not in card.description:
                             card.set_description(card.description + f"\n#{event_num}")
                             card.change_list(ec_logs.id)
+                            card.change_pos("bottom")
 
 
 
@@ -454,7 +455,7 @@ async def update_complete_cards(ctx, start_date=""):
         card_id_to_code_mapping = {}
         for card in codes_sent_card_list:
             card_codes = []
-            for text in re.split(r" \s+ |\n", card.description):
+            for text in re.split(r"\s+|\n", card.description):
                 if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT", "GLU", "GLV", "GLW"]:
                     card_codes.append(text)
                     code_to_card_id_mapping[text] = card.id
