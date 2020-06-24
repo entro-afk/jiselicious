@@ -21,6 +21,7 @@ import asyncio
 import threading
 import dateutil.parser
 import pytz
+import random
 
 client = commands.Bot(command_prefix='+')
 
@@ -57,6 +58,40 @@ async def on_ready():
         except Exception as err:
             print(err)
 
+def check_if_card_contains_codes(card):
+    for text in re.split(r"\s+|\n", card.description):
+        if len(text) == 8 and text[0:3] in jiselConf['code_prefixes']:
+            return True
+    return False
+def find_number_of_codes_needed(card):
+    for text in re.split(r"\n", card.description):
+        if any(word in text.lower() for word in ['round', 'win']):
+            return int(re.findall('\d+', text)[0])
+
+def append_random_codes(card, number_of_codes):
+    if number_of_codes > 7:
+        number_of_codes = 5
+    prefixes_needed = []
+    for i in range(number_of_codes):
+        random_i = random.randint(0, len(jiselConf['random_prefixes']) - 1)
+        prefixes_needed.append(jiselConf['random_prefixes'][random_i])
+    codes_wks = gc.open("PWM Discord - Event Codes (Fixed for Jiselicious)").worksheet("Hosters")
+
+    data = codes_wks.get_all_values()
+    codes_obtained = []
+    back_up_codes = []
+    for r in range(len(data)):
+        for c in range(len(data[r])):
+            for prefix in list(prefixes_needed):
+                if data[r][c].startswith(prefix.upper()) and len(data[r][c]) == 8 and data[r][c] not in codes_obtained:
+                    codes_obtained.append(data[r][c])
+                    prefixes_needed.remove(prefix)
+                    codes_wks.update_cell(r + 1, c + 1, " ")
+                    if prefixes_needed is None:
+                        break
+    codes_sent = "These are your codes:\n" + "       ".join(codes_obtained)
+
+    card.set_description(card.description + f"\n{codes_sent}")
 async def update_trello_cards_and_time():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string)
@@ -85,6 +120,11 @@ async def update_trello_cards_and_time():
                                 emoji = get(client.emojis, name='yes')
                                 await msg.add_reaction(emoji)
                                 if card_action['memberCreator']['username'] in jiselConf['trello']['special_sender_usernames']:
+                                    card_has_codes = check_if_card_contains_codes(card)
+                                    if not card_has_codes:
+                                        num_codes_needed = find_number_of_codes_needed(card)
+                                        append_random_codes(card, num_codes_needed)
+
                                     code_giver = client.get_user(jiselConf['trello']['trello_discord_id_pair'][card_action['memberCreator']['username']])
                                     hoster_receiving_codes = client.get_user(_row[2])
                                     embed = Embed(title=f"You have sent {hoster_receiving_codes} the following codes:", description=card.description, color=0x00ff00)
