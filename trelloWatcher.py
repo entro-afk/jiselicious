@@ -149,7 +149,7 @@ async def update_trello_cards_and_time():
 
             try:
                 now = datetime.datetime.now()
-                if now.minute % 5 == 0:
+                if now.minute % 15 == 0:
                     channel_time_table = Table('timeChannels', metadata, autoload=True, autoload_with=conn)
                     select_st = select([channel_time_table])
                     res = conn.execute(select_st)
