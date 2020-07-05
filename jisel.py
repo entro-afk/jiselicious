@@ -138,6 +138,33 @@ async def get_codes(ctx, *args):
             await ctx.author.send(f"We either don't have or ran out of the following code types:\n{'   '.join(prefixes_needed)}")
 
 
+@client.command(pass_context=True, name='return')
+async def put_back_codes(ctx, *args):
+    if ctx.author.id in jiselConf['event_codes_team']:
+        await emoji_success_feedback(ctx.message)
+        titles_list = []
+        for spreadsheet in gc.openall():
+            titles_list.append(spreadsheet)
+        codes_wks = gc.open("PWM Discord - Event Codes (Fixed for Jiselicious)").worksheet("Hosters")
+
+        data = codes_wks.get_all_values()
+        return_codes = list(args)
+        codes_obtained = []
+        for r in range(len(data)):
+            for c in range(len(data[r])):
+                for code in list(return_codes):
+                    same_prefix = data[r][c][0:3] == code[0:3]
+                    if same_prefix and len(data[r][c]) == 8 and data[r-1][c] in ["", " "]:
+                        codes_wks.update_cell(r, c+1, code)
+                        return_codes.remove(code)
+                        
+                        if return_codes is None:
+                            break
+        await ctx.author.send("These are the codes that were returned:\n" + "       ".join(codes_obtained))
+        if return_codes:
+            await ctx.author.send(f"These are the codes that were not returned:\n{'   '.join(return_codes)}")
+
+
 @client.command(pass_context=True, name='timechannel')
 async def create_time_channel(ctx, person, timezone_for_person):
     guild = ctx.message.guild
@@ -398,7 +425,7 @@ def get_all_codes_from_gyazo_link(message):
                 image_url = gya_image.url
                 text_detected = detect_text_uri(image_url)
                 for text in re.split(r'\n|\s', gya_image.ocr['description']):
-                    if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT"]:
+                    if len(text) == 8 and text[0:3] in jiselConf['code_prefixes']:
                         detected_codes.append(text)
             except:
                 continue
@@ -456,7 +483,7 @@ async def update_complete_cards(ctx, start_date=""):
         for card in codes_sent_card_list:
             card_codes = []
             for text in re.split(r"\s+|\n", card.description):
-                if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT", "GLU", "GLV", "GLW"]:
+                if len(text) == 8 and text[0:3] in jiselConf['code_prefixes']:
                     card_codes.append(text)
                     code_to_card_id_mapping[text] = card.id
                     card_id_to_code_mapping[card.id] = text
@@ -482,7 +509,7 @@ def get_all_codes_from_trello_card(message):
                 image_url = gya_image.url
                 text_detected = detect_text_uri(image_url)
                 for text in re.split(r'\n|\s', gya_image.ocr['description']):
-                    if len(text) == 8 and text[0:3] in ["GLK", "GLC", "GKH", "GJU", "GLJ", "GJX", "GJP", "GLT"]:
+                    if len(text) == 8 and text[0:3] in jiselConf['code_prefixes']:
                         detected_codes.append(text)
             except:
                 continue
