@@ -150,19 +150,33 @@ async def put_back_codes(ctx, *args):
         data = codes_wks.get_all_values()
         return_codes = list(args)
         codes_obtained = []
+        just_used = []
+        bucket = bucket_same_prefix(return_codes)
+        unique_prefixes = list(set([code[0:3] for code in return_codes]))
         for r in range(len(data)):
             for c in range(len(data[r])):
                 for code in list(return_codes):
                     same_prefix = data[r][c][0:3] == code[0:3]
-                    if same_prefix and len(data[r][c]) == 8 and data[r-1][c] in ["", " "]:
-                        codes_wks.update_cell(r, c+1, code)
-                        return_codes.remove(code)
-                        
-                        if return_codes is None:
-                            break
+                    if same_prefix and len(data[r][c]) == 8 and data[r+1][c] in ["", " "]:
+                        for same_prefix_code in bucket[code[0:3]]:
+                            r = r+1
+                            codes_wks.update_cell(r+1, c+1, same_prefix_code)
+                            return_codes.remove(same_prefix_code)
+                            codes_obtained.append(same_prefix_code)
+                            if return_codes is None:
+                                break
         await ctx.author.send("These are the codes that were returned:\n" + "       ".join(codes_obtained))
         if return_codes:
             await ctx.author.send(f"These are the codes that were not returned:\n{'   '.join(return_codes)}")
+
+def bucket_same_prefix(codes):
+    bucket = {}
+    for code in codes:
+        prefix = code[0:3]
+        if prefix not in bucket:
+            bucket[prefix] = []
+        bucket[prefix].append(code)
+    return bucket
 
 
 @client.command(pass_context=True, name='timechannel')
