@@ -133,7 +133,7 @@ async def get_codes(ctx, *args):
                         codes_wks.update_cell(r+1, c+1, " ")
                         if prefixes_needed is None:
                             break
-        await ctx.author.send(("These are your codes:\n" if len(codes_obtained) > 1 else "Your Code") + "       ".join(codes_obtained))
+        await ctx.author.send(("These are your codes:\n" if len(codes_obtained) > 1 else "Your Code:\n") + "       ".join(codes_obtained))
         if prefixes_needed:
             await ctx.author.send(f"We either don't have or ran out of the following code types:\n{'   '.join(prefixes_needed)}")
 
@@ -528,6 +528,13 @@ def get_all_codes_from_trello_card(message):
             except:
                 continue
     return detected_codes
+
+@client.command(pass_context=True, name="updateWeekHost")
+async def update_week_host(ctx, start_date=""):
+    if ctx.message.channel.name == jiselConf['complete_events_channel'] and ctx.author.id in jiselConf['event_codes_team']:
+        board = trello_client.get_board(jiselConf['trello']['board_id'])
+        ec_logs = [t_list for t_list in board.get_lists("all") if t_list.name == 'EC-Logs'][0]
+
 
 # test token
 # client.run(channelsConf['test_bot_token'])
