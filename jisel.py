@@ -530,10 +530,39 @@ def get_all_codes_from_trello_card(message):
     return detected_codes
 
 @client.command(pass_context=True, name="updateWeekHost")
-async def update_week_host(ctx, start_date=""):
+async def update_week_host(ctx, week_number):
     if ctx.message.channel.name == jiselConf['complete_events_channel'] and ctx.author.id in jiselConf['event_codes_team']:
         board = trello_client.get_board(jiselConf['trello']['board_id'])
         ec_logs = [t_list for t_list in board.get_lists("all") if t_list.name == 'EC-Logs'][0]
+        cards_eclog = ec_logs.list_cards()
+        board_tally = [t_list for t_list in board.get_lists("all") if t_list.name == 'Tally']
+        if not board_tally:
+            board.add_list('Tally')
+        board_tally = [t_list for t_list in board.get_lists("all") if t_list.name == 'Tally'][0]
+        mapping = {}
+        for card in cards_eclog:
+            found_name_in_tally = [t_list for t_list in board_tally.list_cards() if t_list.name.split(":")[0].strip() == card.name]
+            if not found_name_in_tally:
+                mapping[card.name] = 1
+                board_tally.add_card(f"{card.name} : {mapping[card.name]}", "Number of Events: {}".format(mapping[card.name]))
+            else:
+                if card.name not in mapping:
+                    mapping[card.name] = 0
+                mapping[card.name] += 1
+                found_name_in_tally[0].set_name(f"{card.name} : {mapping[card.name]}")
+                found_name_in_tally[0].set_description("Number of Events: {}".format(mapping[card.name]))
+
+@client.command(pass_context=True, name="hoster")
+async def hoster_stats(ctx, hoster_name):
+    board = trello_client.get_board(jiselConf['trello']['board_id'])
+    board_tally = [t_list for t_list in board.get_lists("all") if t_list.name == 'Tally']
+    if not board_tally:
+        await ctx.send("There is no Tally board.")
+    else:
+        board_tally = [t_list for t_list in board.get_lists("all") if t_list.name == 'Tally'][0]
+        found_name_in_tally = [t_list for t_list in board_tally.list_cards() if t_list.name == hoster_name]
+        if found_name_in_tally:
+            await ctx.send(f"Hoster {hoster_name}'s Info:\n{found_name_in_tally[0].description}")
 
 
 # test token
