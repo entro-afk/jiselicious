@@ -112,34 +112,83 @@ async def find_code_in_pics(ctx, event_code):
         await ctx.channel.send(f"We could not find {event_code} in the last 500 pictures")
 
 
+def get_charge(user_id):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=
+    jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+
+    try:
+        with db.connect() as conn:
+            hoster_charge_table = Table('hosterCharges', metadata, autoload=True, autoload_with=conn)
+            select_st = select([hoster_charge_table.c.remainingCharge]).where(hoster_charge_table.c.discordID == user_id)
+            res = conn.execute(select_st)
+            remaining_charges = res.first()
+            if remaining_charges is None:
+                return 0
+            return remaining_charges[0]
+    except Exception as err:
+        print(err)
+
+
+def update_charge(user_id, charge):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    hoster_name = client.get_user(user_id).name
+
+    with db.connect() as conn:
+        update_or_insert_charge_query = f"INSERT INTO pwm.\"hosterCharges\" (\"discordID\", \"hosterName\", \"remainingCharge\") VALUES ({user_id}, \'{hoster_name}\', {charge}) ON CONFLICT (\"discordID\") DO UPDATE SET \"remainingCharge\" = {charge}"
+        result = conn.execute(update_or_insert_charge_query)
+        
+
+@client.command(pass_context=True, name='charge')
+async def set_hoster_charge(ctx, hoster_tag: Member, charge):
+    update_charge(hoster_tag.id, charge)
+    await emoji_success_feedback(ctx.message)
+
+@client.command(pass_context=True, name='charge?')
+async def get_hoster_charge(ctx, hoster_tag: Member):
+    num_charge = get_charge(hoster_tag.id)
+    await emoji_success_feedback(ctx.message)
+    await ctx.send(f"{hoster_tag.name} can currently request for {num_charge} codes")
+
 @client.command(pass_context=True, name='code')
 async def get_codes(ctx, *args):
-    if ctx.author.id in jiselConf['event_codes_team']:
-        await emoji_success_feedback(ctx.message)
-        titles_list = []
-        for spreadsheet in gc.openall():
-            titles_list.append(spreadsheet)
-        codes_wks = gc.open("PWM Discord - Event Codes (Fixed for Jiselicious)").worksheet("Hosters")
-
-        data = codes_wks.get_all_values()
+    if ctx.author.id in jiselConf['event_codes_team'] or (ctx.message.channel.type == ChannelType.text and ctx.message.channel.name in jiselConf['veteran_hosters_channel']):
+        remaining_charges = get_charge(ctx.author.id)
         prefixes_needed = list(args)
-        codes_obtained = []
-        for r in range(len(data)):
-            for c in range(len(data[r])):
-                for prefix in list(prefixes_needed):
-                    if data[r][c].startswith(prefix.upper()) and len(data[r][c]) == 8 and data[r][c] not in codes_obtained:
-                        codes_obtained.append(data[r][c])
-                        prefixes_needed.remove(prefix)
-                        codes_wks.update_cell(r+1, c+1, " ")
-                        if prefixes_needed is None:
-                            break
-        await ctx.author.send(("These are your codes:\n" if len(codes_obtained) > 1 else "Your Code:\n") + "       ".join(codes_obtained))
-        if prefixes_needed:
-            await ctx.author.send(f"We either don't have or ran out of the following code types:\n{'   '.join(prefixes_needed)}")
+        if remaining_charges >= len(prefixes_needed) or ctx.author.id in jiselConf['event_codes_team']:
+            await emoji_success_feedback(ctx.message)
+            titles_list = []
+            for spreadsheet in gc.openall():
+                titles_list.append(spreadsheet)
+            codes_wks = gc.open("PWM Discord - Event Codes (Fixed for Jiselicious)").worksheet("Hosters")
+
+            data = codes_wks.get_all_values()
+            codes_obtained = []
+            for r in range(len(data)):
+                for c in range(len(data[r])):
+                    for prefix in list(prefixes_needed):
+                        if data[r][c].startswith(prefix.upper()) and len(data[r][c]) == 8 and data[r][c] not in codes_obtained:
+                            codes_obtained.append(data[r][c])
+                            prefixes_needed.remove(prefix)
+                            codes_wks.update_cell(r+1, c+1, " ")
+                            if prefixes_needed is None:
+                                break
+            await ctx.author.send(("These are your codes:\n" if len(codes_obtained) > 1 else "Your Code:\n") + "       ".join(codes_obtained))
+            new_remaining_charge = remaining_charges-len(codes_obtained)
+            update_charge(ctx.author.id, new_remaining_charge)
+            await ctx.send((f"Check your DM for the codes.  Based on your requested events, you can now currently request for {new_remaining_charge} more codes"))
+            if prefixes_needed:
+                await ctx.author.send(f"We either don't have or ran out of the following code types:\n{'   '.join(prefixes_needed)}")
+        elif remaining_charges < len(prefixes_needed):
+            await ctx.send((f"You can currently request for {remaining_charges} more codes but you requested for {len(prefixes_needed)}.  Please contact for a refill if you need more."))
+    else:
+        await ctx.author.send("You are only allowed to make code requests in the veteran hosters' channel")
 
 
 @client.command(pass_context=True, name='return')
-async def put_back_codes(ctx, *args):
+async def put_back_codes(ctx, return_code):
     if ctx.author.id in jiselConf['event_codes_team']:
         await emoji_success_feedback(ctx.message)
         titles_list = []
@@ -148,26 +197,22 @@ async def put_back_codes(ctx, *args):
         codes_wks = gc.open("PWM Discord - Event Codes (Fixed for Jiselicious)").worksheet("Hosters")
 
         data = codes_wks.get_all_values()
-        return_codes = list(args)
+        return_codes = []
         codes_obtained = []
-        just_used = []
-        bucket = bucket_same_prefix(return_codes)
-        unique_prefixes = list(set([code[0:3] for code in return_codes]))
         for r in range(len(data)):
             for c in range(len(data[r])):
-                for code in list(return_codes):
-                    same_prefix = data[r][c][0:3] == code[0:3]
-                    if same_prefix and len(data[r][c]) == 8 and data[r+1][c] in ["", " "]:
-                        for same_prefix_code in bucket[code[0:3]]:
-                            r = r+1
-                            codes_wks.update_cell(r+1, c+1, same_prefix_code)
-                            return_codes.remove(same_prefix_code)
-                            codes_obtained.append(same_prefix_code)
-                            if return_codes is None:
-                                break
-        await ctx.author.send("These are the codes that were returned:\n" + "       ".join(codes_obtained))
+                same_prefix = data[r][c][0:3] == return_code[0:3]
+                if same_prefix and len(data[r][c]) == 8 and data[r + 1][c] in ["", " "]:
+                    r = r + 1
+                    codes_wks.update_cell(r + 1, c + 1, return_code)
+                    return_codes.remove(return_code)
+                    codes_obtained.append(return_code)
+                    if return_codes is None:
+                        break
+
+        await ctx.author.send("This code was returned:\n" + "       ".join(codes_obtained))
         if return_codes:
-            await ctx.author.send(f"These are the codes that were not returned:\n{'   '.join(return_codes)}")
+            await ctx.author.send(f"This code was not returned:\n{'   '.join(return_codes)}")
 
 def bucket_same_prefix(codes):
     bucket = {}
@@ -270,6 +315,11 @@ async def handle_complete_events(message):
             if "Next hoster, please use this number as your event number" not in last_messages[1].clean_content:
                 await event_number_validator(last_messages[0], last_event_number, current_event_number)
 
+def find_number_of_codes_needed(message):
+    for text in re.split(r"\n", message.clean_content):
+        if any(word in text.lower() for word in ['round', 'win']):
+            return int(re.findall('\d+', text)[0])
+
 async def handle_request_event(message):
     if message.channel.type == ChannelType.text and message.channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.clean_content.upper() or message.clean_content.upper().startswith("Server".upper())):
         board = trello_client.get_board(jiselConf['trello']['board_id'])
@@ -278,9 +328,10 @@ async def handle_request_event(message):
         db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
         db = create_engine(db_string)
         metadata = MetaData(schema="pwm")
-
+        
         try:
             with db.connect() as conn:
+                
                 trello_hoster_cards_table = Table('trelloHosterCards', metadata, autoload=True, autoload_with=conn)
                 insert_statement = trello_hoster_cards_table.insert().values(cardID=new_card.id, messageID=message.id, requestingHosterID=message.author.id)
                 conn.execute(insert_statement)
@@ -394,6 +445,25 @@ async def on_message(message):
 
     await client.process_commands(message)
 
+@client.event
+async def on_raw_reaction_add(payload):
+    channel = client.get_channel(payload.channel_id)
+    message = await channel.fetch_message(payload.message_id)
+    if payload.emoji.name == jiselConf['charge_emoji_name'] and channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.clean_content.upper() or message.clean_content.upper().startswith("Server".upper())):
+        db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+        db = create_engine(db_string)
+        metadata = MetaData(schema="pwm")
+        hoster_name = client.get_user(payload.user_id).name
+        num_codes = find_number_of_codes_needed(message)
+
+        with db.connect() as conn:
+            update_or_insert_charge_query = f"INSERT INTO pwm.\"hosterCharges\" (\"discordID\", \"hosterName\", \"remainingCharge\") VALUES ({payload.user_id}, \'{hoster_name}\', {num_codes}) ON CONFLICT (\"discordID\") DO UPDATE SET \"remainingCharge\" = \"hosterCharges\".\"remainingCharge\" + {num_codes}"
+            result = conn.execute(update_or_insert_charge_query)
+
+
+
+        print(payload)
+        pass
 
 def extract_event_number(message):
     message_split_into_lines = message.clean_content.split("\n")
@@ -563,7 +633,6 @@ async def hoster_stats(ctx, hoster_name):
         found_name_in_tally = [t_list for t_list in board_tally.list_cards() if t_list.name == hoster_name]
         if found_name_in_tally:
             await ctx.send(f"Hoster {hoster_name}'s Info:\n{found_name_in_tally[0].description}")
-
 
 # test token
 # client.run(channelsConf['test_bot_token'])
