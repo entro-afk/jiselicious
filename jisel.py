@@ -155,7 +155,8 @@ async def get_hoster_charge(ctx, hoster_tag: Member):
 @client.command(pass_context=True, name='code')
 async def get_codes(ctx, *args):
     if ctx.author.id in jiselConf['event_codes_team'] or (ctx.message.channel.type == ChannelType.text and ctx.message.channel.name in jiselConf['veteran_hosters_channel']):
-        remaining_charges = get_charge(ctx.author.id)
+        if ctx.author.id not in jiselConf['event_codes_team']:
+            remaining_charges = get_charge(ctx.author.id)
         prefixes_needed = list(args)
         if remaining_charges >= len(prefixes_needed) or ctx.author.id in jiselConf['event_codes_team']:
             await emoji_success_feedback(ctx.message)
@@ -177,7 +178,8 @@ async def get_codes(ctx, *args):
                                 break
             await ctx.author.send(("These are your codes:\n" if len(codes_obtained) > 1 else "Your Code:\n") + "       ".join(codes_obtained))
             new_remaining_charge = remaining_charges-len(codes_obtained)
-            update_charge(ctx.author.id, new_remaining_charge)
+            if ctx.author.id not in jiselConf['event_codes_team']:
+                update_charge(ctx.author.id, new_remaining_charge)
             await ctx.send((f"Check your DM for the codes.  Based on your requested events, you can now currently request for {new_remaining_charge} more codes"))
             if prefixes_needed:
                 await ctx.author.send(f"We either don't have or ran out of the following code types:\n{'   '.join(prefixes_needed)}")
@@ -470,6 +472,8 @@ def extract_event_number(message):
     for line in message_split_into_lines:
         if "time" not in line.lower() and "event" in line.lower() and bool(re.search(r'\d', line)):
             return int(re.findall('\d+', line)[0])
+        elif "id" in line.lower() and "event" in line.lower() and bool(re.search(r'\d', line)):
+            return int(re.findall('\d+', line)[1])
 
 
 async def get_all_messages(channel):
