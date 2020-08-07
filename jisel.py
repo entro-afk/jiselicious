@@ -155,6 +155,7 @@ async def get_hoster_charge(ctx, hoster_tag: Member):
 @client.command(pass_context=True, name='code')
 async def get_codes(ctx, *args):
     if ctx.author.id in jiselConf['event_codes_team'] or (ctx.message.channel.type == ChannelType.text and ctx.message.channel.name in jiselConf['veteran_hosters_channel']):
+        remaining_charges =0
         if ctx.author.id not in jiselConf['event_codes_team']:
             remaining_charges = get_charge(ctx.author.id)
         prefixes_needed = list(args)
@@ -615,7 +616,7 @@ async def update_week_host(ctx, week_number):
         board_tally = [t_list for t_list in board.get_lists("all") if t_list.name == 'Tally'][0]
         mapping = {}
         for card in cards_eclog:
-            found_name_in_tally = [t_list for t_list in board_tally.list_cards() if t_list.name.split(":")[0].strip() == card.name]
+            found_name_in_tally = [t_list for t_list in board_tally.list_cards() if t_list.name == card.name]
             if not found_name_in_tally:
                 mapping[card.name] = 1
                 board_tally.add_card(f"{card.name} : {mapping[card.name]}", "Number of Events: {}".format(mapping[card.name]))
