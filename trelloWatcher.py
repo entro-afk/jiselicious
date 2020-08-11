@@ -119,14 +119,18 @@ async def update_trello_cards_and_time():
                                 msg = await channel.fetch_message(_row[1])
                                 emoji = get(client.emojis, name='yes')
                                 await msg.add_reaction(emoji)
-                                if card_action['memberCreator']['username'] in jiselConf['trello']['special_sender_usernames']:
+                                hoster_receiving_codes = client.get_user(_row[2])
+                                guild = client.get_guild(jiselConf['guild_id'])
+                                hoster_roles = [u.roles for u in guild.members if u.id == _row[2]][0]
+                                hoster_role_names = [role.name for role in hoster_roles]
+                                is_veteran_hoster = jiselConf['veteran_hoster_role_name'] in hoster_role_names
+                                if card_action['memberCreator']['username'] in jiselConf['trello']['special_sender_usernames'] and not is_veteran_hoster:
                                     card_has_codes = check_if_card_contains_codes(card)
                                     if not card_has_codes:
                                         num_codes_needed = find_number_of_codes_needed(card)
                                         append_random_codes(card, num_codes_needed)
 
                                     code_giver = client.get_user(jiselConf['trello']['trello_discord_id_pair'][card_action['memberCreator']['username']])
-                                    hoster_receiving_codes = client.get_user(_row[2])
                                     embed = Embed(title=f"You have sent {hoster_receiving_codes} the following codes:", description=card.description, color=0x00ff00)
                                     await code_giver.send(embed=embed)
                                     hoster_embed = Embed(title=f"{code_giver.name} has prepared codes for your request:", description=card.description, color=0x00ff00)
