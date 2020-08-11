@@ -14,7 +14,7 @@ from sqlalchemy import *
 import json
 import os
 import datetime
-from discord import File, Member, Role, PermissionOverwrite, ChannelType
+from discord import File, Member, Role, PermissionOverwrite, ChannelType, Embed
 import requests
 import time
 import asyncio
@@ -538,6 +538,15 @@ def check_if_text_contains_codes(message):
             return True
     return False
 
+@client.command(pass_context=True, name="veteranswho")
+async def get_all_veteran_hosters(ctx):
+    veteran_members = get(ctx.guild.roles, name="Veteran Hoster").members
+    msg= []
+    for member in veteran_members:
+        member_server = '*unassigned*' if get_server(member.id) == 0 else get_server(member.id)
+        msg.append(f"<@{member.id}>  |   {member.id}  |   {member_server}")
+    embed = Embed(title=f"Member                ID                             Server", description='\n'.join(msg), color=0x00ff00)
+    await ctx.send(embed=embed)
 @client.command(pass_context=True, name="server")
 async def assign_hoster_server_db(ctx, hoster_tag: Member, server_name):
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
