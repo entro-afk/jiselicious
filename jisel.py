@@ -466,7 +466,6 @@ async def on_raw_reaction_add(payload):
 
 
         print(payload)
-        pass
 
 def extract_event_number(message):
     message_split_into_lines = message.clean_content.split("\n")
@@ -533,6 +532,57 @@ async def find_message_with_codes(channel, event_code):
 
     return None
 
+def check_if_text_contains_codes(message):
+    for text in re.split(r"\s+|\n", message):
+        if len(text) == 8 and text[0:3] in jiselConf['code_prefixes']:
+            return True
+    return False
+
+@client.command(pass_context=True, name="server")
+async def assign_hoster_server_db(ctx, hoster_tag: Member, server_name):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+
+    with db.connect() as conn:
+        update_or_insert_server_query = f"INSERT INTO pwm.\"hosterServerMapping\" (\"discordID\", \"server\") VALUES ({hoster_tag.id}, \'{server_name}\') ON CONFLICT (\"discordID\") DO UPDATE SET \"server\" = '{server_name}'"
+        result = conn.execute(update_or_insert_server_query)
+
+@client.command(pass_context=True, name="whichserver")
+async def get_hoster_server(ctx, hoster_tag: Member):
+    server_name = get_server(hoster_tag.id)
+    await emoji_success_feedback(ctx.message)
+    await ctx.send(f"{hoster_tag.name} is currently hosting in {server_name}")
+
+
+def get_server(user_id):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+
+    try:
+        with db.connect() as conn:
+            hoster_server_table = Table('hosterServerMapping', metadata, autoload=True, autoload_with=conn)
+            select_st = select([hoster_server_table.c.server]).where(hoster_server_table.c.discordID == user_id)
+            res = conn.execute(select_st)
+            remaining_charges = res.first()
+            if remaining_charges is None:
+                return 0
+            return remaining_charges[0]
+    except Exception as err:
+        print(err)
+
+def check_if_any_ec_log_card_contains_message_codes_already(ec_logs, text_detected):
+    ec_logs_card_list = ec_logs.list_cards()
+    for card in ec_logs_card_list:
+        card_codes = []
+        for text in re.split(r"\s+|\n", card.description):
+            if len(text) == 8 and text[0:3] in jiselConf['code_prefixes']:
+                card_codes.append(text)
+        check_if_text_includes_any_code = [code for code in card_codes if code in text_detected]
+        if len(check_if_text_includes_any_code) > 0:
+            return True
+    return False
+
 
 async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec_logs, start_date):
     event_num = 0
@@ -553,8 +603,25 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
                             card.set_description(card.description + f"\n#{event_num}")
                             card.change_list(ec_logs.id)
                             card.change_pos("bottom")
-
-
+                    else:
+                        if check_if_text_contains_codes(text_detected) and not check_if_any_ec_log_card_contains_message_codes_already(ec_logs, text_detected):
+                            new_card = ec_logs.add_card(message.author.nick or message.author.name, message.clean_content)
+                            new_card.change_pos("bottom")
+                            codes_used = []
+                            for text in re.split(r"\s+|\n", text_detected):
+                                if len(text) == 8 and text[0:3] in jiselConf['code_prefixes']:
+                                    codes_used.append(text)
+                            codes_sent = "Codes:\n" + "       ".join(codes_used)
+                            hoster_server = get_server(message.author.id)
+                            new_card.set_description(f"Server: {hoster_server}" + "\n" + new_card.description + f"\n{codes_sent}" + f"\n#{event_num}")
+            elif "gyazo.com" in message.clean_content:
+                codes = list(set(get_all_codes_from_gyazo_link(message)))
+                if not check_if_any_ec_log_card_contains_message_codes_already(ec_logs, '   '.join(codes)):
+                    event_number = extract_event_number(message)
+                    hoster_server = get_server(message.author.id)
+                    card_content = f"Server: {hoster_server}" + "\n" + message.clean_content.split('\n')[1] + "\n" + '   '.join(codes) + "\n\n#" + str(event_number)
+                    new_card = ec_logs.add_card(message.author.nick or message.author.name, card_content)
+                    new_card.change_pos("bottom")
 
 @client.command(pass_context=True, name="updatecomplete")
 async def update_complete_cards(ctx, start_date=""):
