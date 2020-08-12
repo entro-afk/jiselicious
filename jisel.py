@@ -556,6 +556,30 @@ async def assign_hoster_server_db(ctx, hoster_tag: Member, server_name):
         update_or_insert_server_query = f"INSERT INTO pwm.\"hosterServerMapping\" (\"discordID\", \"server\") VALUES ({hoster_tag.id}, \'{server_name}\') ON CONFLICT (\"discordID\") DO UPDATE SET \"server\" = '{server_name}'"
         result = conn.execute(update_or_insert_server_query)
 
+@client.command(pass_context=True, name="docs")
+async def output_available_docs(ctx):
+    commands_and_desc = {
+        "+perms <@ user ID>  <insert perm here>": "Gives perms. perms include `all`, `read`, `send`, `embed`, `attach`, `external`, `react`, `cinvite`, `mchannel`, `mperm`, `mweb`, `TTS`, `mmsg`, `rhistory`, `mention`, `exreact`",
+        "-perms <@ user ID>  <insert perm here>": "Removes perms. perms include `all`, `read`, `send`, `embed`, `attach`, `external`, `react`, `cinvite`, `mchannel`, `mperm`, `mweb`, `TTS`, `mmsg`, `rhistory`, `mention`, `exreact`",
+        "+charge <@ user ID> <Number>": "Gives the mentioned veteran hoster <Number> code requests",
+        "+charge?": "Gets the mentioned veteran hoster's currently allowed code requests",
+        "+code [one or more three letter prefixes]": "+code ABC GLC WXL DEF",
+        "+return <one code>": "+return WXL12345",
+        "+timechannel <name> <Etc/GMT-2 or other timezone>": "name must be a string and not a tag",
+        "+veteranswho": "Gives a list of veteran hosters' discord tags, discord ID, and Current Hosting Servers",
+        "+server <@ mentioned hoster> <server name>": "Assigns a server name to the mentioned hoster",
+        "+whichserver <@ mentioned hoster>": "Gets hoster's current server",
+        "+updatecomplete day/month/year ": "+updatecomplete 26/7/2020 moves a card from Codes Sent Trello List to EC-Logs or makes a new one if Jiselicious detects a new sent code that been newly used and uploaded",
+        "+hoster <Name>": "+hoster Facebook would give Facebook's current stats for the past week",
+    }
+
+    msg = []
+    for c in commands_and_desc:
+        msg.append(f'**{c}**\n                    |                       {commands_and_desc[c]}')
+    embed = Embed(title=f"Commands and Descriptions", description='\n'.join(msg), color=0x00ff00)
+    await ctx.send(embed=embed)
+
+
 @client.command(pass_context=True, name="whichserver")
 async def get_hoster_server(ctx, hoster_tag: Member):
     server_name = get_server(hoster_tag.id)
