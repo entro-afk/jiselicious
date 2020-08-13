@@ -754,6 +754,8 @@ async def update_week_host(ctx, week_number=None):
             card_section[2 + veteran_index] = f"**Week**: {used_week_number}"
             whole_card_desc = "\n".join(card_section)
             t_card.set_description(whole_card_desc)
+        await emoji_success_feedback(ctx.message)
+
 
 @client.command(pass_context=True, name="hoster")
 async def hoster_stats(ctx, hoster_name):
