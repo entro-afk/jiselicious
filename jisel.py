@@ -509,7 +509,7 @@ def get_all_codes_from_gyazo_link(message):
         if "gyazo.com" in line.lower():
             code_uri = line.split("/")[-1]
             try:
-                gya_image = gyazo_client.get_image(re.sub(f'https://gyazo.com/', '', code_uri))
+                gya_image = gyazo_client.get_image(re.sub(f'https://gyazo.com/', '', code_uri.strip()))
                 image_url = gya_image.url
                 text_detected = detect_text_uri(image_url)
                 for text in re.split(r'\n|\s', gya_image.ocr['description']):
@@ -626,7 +626,7 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
         if message.author.id != client.user.id:
             if "gyazo.com" not in message.clean_content and message.attachments:
                 print("remote ocr-ing")
-                new_card_needed = false
+                new_card_needed = False
                 for pic in message.attachments:
                     text_detected = detect_text_uri(pic.url)
                     check_if_text_includes_any_code = [code for code in code_to_card_id_mapping.keys() if code in text_detected]
@@ -751,7 +751,7 @@ async def update_week_host(ctx, week_number=None):
             card_section = t_card.description.split("\n")
             is_veteran = '[VETERAN]' in t_card.description
             veteran_index = 1 if is_veteran else 0
-            card_section[2 + veteran_index] = used_week_number
+            card_section[2 + veteran_index] = f"**Week**: {used_week_number}"
             whole_card_desc = "\n".join(card_section)
             t_card.set_description(whole_card_desc)
 
