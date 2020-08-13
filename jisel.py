@@ -626,6 +626,7 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
         if message.author.id != client.user.id:
             if "gyazo.com" not in message.clean_content and message.attachments:
                 print("remote ocr-ing")
+                new_card_needed = false
                 for pic in message.attachments:
                     text_detected = detect_text_uri(pic.url)
                     check_if_text_includes_any_code = [code for code in code_to_card_id_mapping.keys() if code in text_detected]
@@ -637,16 +638,23 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
                             card.change_list(ec_logs.id)
                             card.change_pos("bottom")
                     else:
+                        new_card_needed= True
+                if new_card_needed:
+                    codes_used = []
+                    for pic in message.attachments:
+                        text_detected = detect_text_uri(pic.url)
                         if check_if_text_contains_codes(text_detected) and not check_if_any_ec_log_card_contains_message_codes_already(ec_logs, text_detected):
-                            new_card = ec_logs.add_card(message.author.nick or message.author.name, message.clean_content)
-                            new_card.change_pos("bottom")
-                            codes_used = []
                             for text in re.split(r"\s+|\n", text_detected):
                                 if len(text) == 8 and text[0:3] in jiselConf['code_prefixes']:
                                     codes_used.append(text)
-                            codes_sent = "Codes:\n" + "       ".join(codes_used)
-                            hoster_server = get_server(message.author.id)
-                            new_card.set_description(f"Server: {hoster_server}" + "\n" + new_card.description + f"\n{codes_sent}" + f"\n#{event_num}")
+                        else:
+                            new_card_needed = False
+                    if new_card_needed:
+                        new_card = ec_logs.add_card(message.author.nick or message.author.name, message.clean_content)
+                        new_card.change_pos("bottom")
+                        codes_sent = "Codes:\n" + "       ".join(codes_used)
+                        hoster_server = get_server(message.author.id)
+                        new_card.set_description(f"Server: {hoster_server}" + "\n" + new_card.description + f"\n{codes_sent}" + f"\n#{event_num}")
             elif "gyazo.com" in message.clean_content:
                 codes = list(set(get_all_codes_from_gyazo_link(message)))
                 if not check_if_any_ec_log_card_contains_message_codes_already(ec_logs, '   '.join(codes)):
@@ -705,27 +713,47 @@ def get_all_codes_from_trello_card(message):
     return detected_codes
 
 @client.command(pass_context=True, name="updateWeekHost")
-async def update_week_host(ctx, week_number):
+async def update_week_host(ctx, week_number=None):
     if ctx.message.channel.name == jiselConf['complete_events_channel'] and ctx.author.id in jiselConf['event_codes_team']:
         board = trello_client.get_board(jiselConf['trello']['board_id'])
-        ec_logs = [t_list for t_list in board.get_lists("all") if t_list.name == 'EC-Logs'][0]
-        cards_eclog = ec_logs.list_cards()
+        most_recent_week_list_name = [week_list.name for week_list in board.get_lists("all") if week_list.name.startswith("Week")][0]
+        used_week_number = int(re.findall('\d+', most_recent_week_list_name)[0])
+        if week_number:
+            used_week_number = week_number
+        latest_week_list = [t_list for t_list in board.get_lists("all") if t_list.name == f'Week {used_week_number}'][0]
+        cards_latest_week = latest_week_list.list_cards()
         board_tally = [t_list for t_list in board.get_lists("all") if t_list.name == 'Tally']
         if not board_tally:
             board.add_list('Tally')
         board_tally = [t_list for t_list in board.get_lists("all") if t_list.name == 'Tally'][0]
-        mapping = {}
-        for card in cards_eclog:
-            found_name_in_tally = [t_list for t_list in board_tally.list_cards() if t_list.name == card.name]
-            if not found_name_in_tally:
-                mapping[card.name] = 1
-                board_tally.add_card(f"{card.name} : {mapping[card.name]}", "Number of Events: {}".format(mapping[card.name]))
-            else:
-                if card.name not in mapping:
-                    mapping[card.name] = 0
-                mapping[card.name] += 1
-                found_name_in_tally[0].set_name(f"{card.name} : {mapping[card.name]}")
-                found_name_in_tally[0].set_description("Number of Events: {}".format(mapping[card.name]))
+        for card in cards_latest_week:
+            names_to_look_for = [card.name] if "and" not in card.name else re.split(',|and', card.name)
+            for searching_name in names_to_look_for:
+                found_name_in_tally = [t_card for t_card in board_tally.list_cards() if t_card.name in searching_name]
+                if not found_name_in_tally:
+                    date_started=datetime.datetime.today().strftime("%d/%b/%y").upper()
+                    board_tally.add_card(f"{searching_name}", f"Started on: {date_started}\n\n**Week**: {used_week_number}\n\nEvents done this week: 1\nEvents done this month: 1\nTotal events hosted: 1")
+                elif f'**Week**: {used_week_number}' not in found_name_in_tally[0].description:
+                    card_section = found_name_in_tally[0].description.split("\n")
+                    is_veteran = '[VETERAN]' in found_name_in_tally[0].description
+                    veteran_index = 1 if is_veteran else 0
+                    veteran_line = "[VETERAN]"+"\n" if is_veteran else ""
+                    started_line = card_section[0 + veteran_index]
+                    week_status = card_section[2 + veteran_index]
+                    week_events = card_section[4 + veteran_index]
+                    new_week_number = 1 if 'Processing' not in week_status else int((re.findall('\d+', week_events) or [0])[0]) + 1
+                    month_events = card_section[5 + veteran_index]
+                    new_month_number = int((re.findall('\d+', month_events) or [0])[0]) + 1
+                    total_events = card_section[6 + veteran_index]
+                    new_total_number = int((re.findall('\d+', total_events) or [0])[0]) + 1
+                    found_name_in_tally[0].set_description(f"{veteran_line}{started_line}\n\n**Week**: Processing to {used_week_number}\n\nEvents done this week: {new_week_number}\nEvents done this month: {new_month_number}\nTotal events hosted: {new_total_number}")
+        for t_card in board_tally.list_cards():
+            card_section = t_card.description.split("\n")
+            is_veteran = '[VETERAN]' in t_card.description
+            veteran_index = 1 if is_veteran else 0
+            card_section[2 + veteran_index] = used_week_number
+            whole_card_desc = "\n".join(card_section)
+            t_card.set_description(whole_card_desc)
 
 @client.command(pass_context=True, name="hoster")
 async def hoster_stats(ctx, hoster_name):
