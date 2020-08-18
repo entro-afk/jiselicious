@@ -143,14 +143,21 @@ def update_charge(user_id, charge):
 
 @client.command(pass_context=True, name='charge')
 async def set_hoster_charge(ctx, hoster_tag: Member, charge):
-    update_charge(hoster_tag.id, charge)
-    await emoji_success_feedback(ctx.message)
+    num_charge = get_charge(hoster_tag.id)
+    if (charge <= 5) or ctx.author.id in jiselConf['event_codes_team']:
+        update_charge(hoster_tag.id, charge)
+        await emoji_success_feedback(ctx.message)
+    else:
+        if charge > 5:
+            ctx.author.send(f"You can currently request {num_charge} codes.  Please call an Event Manager or an assistant to charge more than 5 code requests")
+
 
 @client.command(pass_context=True, name='charge?')
 async def get_hoster_charge(ctx, hoster_tag: Member):
     num_charge = get_charge(hoster_tag.id)
     await emoji_success_feedback(ctx.message)
     await ctx.send(f"{hoster_tag.name} can currently request for {num_charge} codes")
+
 
 @client.command(pass_context=True, name='code')
 async def get_codes(ctx, *args):
@@ -181,7 +188,7 @@ async def get_codes(ctx, *args):
             new_remaining_charge = remaining_charges-len(codes_obtained)
             if ctx.author.id not in jiselConf['event_codes_team']:
                 update_charge(ctx.author.id, new_remaining_charge)
-            await ctx.send((f"Check your DM for the codes.  Based on your requested events, you can now currently request for {new_remaining_charge} more codes"))
+                await ctx.send((f"Check your DM for the codes.  Based on your requested events, you can now currently request for {new_remaining_charge} more codes"))
             if prefixes_needed:
                 await ctx.author.send(f"We either don't have or ran out of the following code types:\n{'   '.join(prefixes_needed)}")
         elif remaining_charges < len(prefixes_needed):
@@ -751,6 +758,10 @@ async def update_week_host(ctx, week_number=None):
             card_section = t_card.description.split("\n")
             is_veteran = '[VETERAN]' in t_card.description
             veteran_index = 1 if is_veteran else 0
+            most_recent_week_list = [week_list for week_list in board.get_lists("all") if week_list.name.startswith("Week")][0]
+            found_name_in_curr_week = [w_card for w_card in most_recent_week_list.list_cards() if t_card.name in w_card.name]
+            if not found_name_in_curr_week:
+                card_section[4 + veteran_index] = "Events done this week: -"
             card_section[2 + veteran_index] = f"**Week**: {used_week_number}"
             whole_card_desc = "\n".join(card_section)
             t_card.set_description(whole_card_desc)
