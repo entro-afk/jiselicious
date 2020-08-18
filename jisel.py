@@ -144,13 +144,18 @@ def update_charge(user_id, charge):
 @client.command(pass_context=True, name='charge')
 async def set_hoster_charge(ctx, hoster_tag: Member, charge):
     num_charge = get_charge(hoster_tag.id)
-    if (charge <= 5) or ctx.author.id in jiselConf['event_codes_team']:
+    if (num_charge <= 5 and charge <= 5) or ctx.author.id in jiselConf['event_codes_team']:
         update_charge(hoster_tag.id, charge)
         await emoji_success_feedback(ctx.message)
     else:
-        if charge > 5:
+        if charge > 5 or num_charge > 5:
             ctx.author.send(f"You can currently request {num_charge} codes.  Please call an Event Manager or an assistant to charge more than 5 code requests")
 
+@client.command(pass_context=True, name='chargeall')
+async def charge_all_veteran_hosters(ctx, charge):
+    veteran_members = get(ctx.guild.roles, name="Veteran Hoster").members
+    for member in veteran_members:
+        update_charge(member.id, charge)
 
 @client.command(pass_context=True, name='charge?')
 async def get_hoster_charge(ctx, hoster_tag: Member):
