@@ -556,8 +556,10 @@ async def get_all_veteran_hosters(ctx):
     msg= []
     for member in veteran_members:
         member_server = '*unassigned*' if get_server(member.id) == 0 else get_server(member.id)
-        msg.append(f"<@{member.id}>  |   {member.id}  |   {member_server}")
-    embed = Embed(title=f"Member                ID                             Server", description='\n'.join(msg), color=0x00ff00)
+        member_tag = f'<@{member.id}>' if member.id not in jiselConf['event_codes_team'] else f'{member.display_name}'
+        member_charge = get_charge(member.id)
+        msg.append(f"{member_tag}        |   {member.id}        |      {member_server}         |        {member_charge}")
+    embed = Embed(title=f"Member                ID                             Server            Charge", description='\n'.join(msg), color=0x00ff00)
     await ctx.send(embed=embed)
 @client.command(pass_context=True, name="server")
 async def assign_hoster_server_db(ctx, hoster_tag: Member, server_name):
