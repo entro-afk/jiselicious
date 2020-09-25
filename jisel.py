@@ -60,6 +60,15 @@ async def remove_loading_feedback(message):
     emoji = get(client.emojis, name='loading')
     await message.remove_reaction(emoji, client.user)
 
+@client.event
+async def on_member_update(before, after):
+    if before.id == 424958829596246027:
+        n = after.nick
+        if n:
+            if n.lower().count("navi") or n.lower().count("mod"):
+                last = before.nick
+                if last:
+                    await after.edit(nick = "Death")
 
 @client.command(pass_context=True)
 async def perms(ctx, member: Union[Member, Role], *args) :
@@ -543,6 +552,7 @@ async def find_message_with_codes(channel, event_code):
 
 
     return None
+
 
 def check_if_text_contains_codes(message):
     for text in re.split(r"\s+|\n", message):
