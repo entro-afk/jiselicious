@@ -68,7 +68,7 @@ async def on_member_update(before, after):
             if n.lower().count("navi") or n.lower().count("mod"):
                 last = before.nick
                 if last:
-                    await after.edit(nick = "Death")
+                    await after.edit(nick="Death")
 
 @client.command(pass_context=True)
 async def perms(ctx, member: Union[Member, Role], *args) :
@@ -371,7 +371,10 @@ async def handle_request_event(message):
 
 async def handle_bug_report(message):
     if message.channel.type == ChannelType.text and message.channel.name in ["bug-report"]:
-        wks = gc.open("PWM bug report chart").worksheet("Hoja 1")
+        if message.guild.id == jiselConf['snk_guild_id']:
+            wks = gc.open("SNK bug report chart").worksheet("Sheet1")
+        else:
+            wks = gc.open("PWM bug report chart").worksheet("Hoja 1")
 
         data = wks.get_all_values()
         headers = data[0]
