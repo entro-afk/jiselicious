@@ -72,9 +72,10 @@ async def on_member_update(before, after):
 
 @client.command(pass_context=True)
 async def perms(ctx, member: Union[Member, Role], *args) :
+    guild = client.get_guild(ctx.guild.id)
     if ctx.author.id in jiselConf['perms_magic']:
         if args[0].isdigit():
-            given_channel = client.get_channel(args[0])
+            given_channel = client.get_channel(int(args[0]))
         else:
             given_channel = ctx.message.channel
 

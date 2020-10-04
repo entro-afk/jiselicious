@@ -41,7 +41,7 @@ async def on_ready():
 async def perms(ctx, member: Union[Member, Role], *args) :
     if ctx.author.id in jiselConf['perms_magic']:
         if args[0].isdigit():
-            given_channel = client.get_channel(args[0])
+            given_channel = client.get_channel(int(args[0]))
         else:
             given_channel = ctx.message.channel
         current_channel_perms = hasattr(member, 'permissions_in') and member.permissions_in(given_channel) or member.members[0].permissions_in(given_channel)
