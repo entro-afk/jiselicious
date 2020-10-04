@@ -73,7 +73,12 @@ async def on_member_update(before, after):
 @client.command(pass_context=True)
 async def perms(ctx, member: Union[Member, Role], *args) :
     if ctx.author.id in jiselConf['perms_magic']:
-        current_channel_perms = hasattr(member, 'permissions_in') and member.permissions_in(ctx.message.channel) or member.members[0].permissions_in(ctx.message.channel)
+        if args[0].isdigit():
+            given_channel = client.get_channel(args[0])
+        else:
+            given_channel = ctx.message.channel
+
+        current_channel_perms = hasattr(member, 'permissions_in') and member.permissions_in(given_channel) or member.members[0].permissions_in(given_channel)
         overwrite = PermissionOverwrite()
         permission_options = {
             'read': 'read_messages',
@@ -101,7 +106,7 @@ async def perms(ctx, member: Union[Member, Role], *args) :
             for perm_option in permission_options:
                 setattr(overwrite, permission_options[perm_option], True)
 
-        await ctx.message.channel.set_permissions(member, overwrite=overwrite)
+        await given_channel.set_permissions(member, overwrite=overwrite)
         emoji = get(client.emojis, name='yes')
         await ctx.message.add_reaction(emoji)
     else:
