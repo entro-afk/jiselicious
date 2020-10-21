@@ -170,7 +170,7 @@ async def update_trello_cards_and_time():
                             )
                             res = conn.execute(update_statement)
                             await client.wait_until_ready()
-                            guild = client.get_guild(jiselConf['guild_id'])
+                            guild = client.get_guild(_row[5])
                             channel = get(guild.voice_channels, id=int(_row[2]))
                             await channel.edit(name=f"⌚ {_row[1]}'s time: {now_time}")
             except Exception as err:
