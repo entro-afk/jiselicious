@@ -272,7 +272,7 @@ async def create_time_channel(ctx, person, timezone_for_person):
     try:
         with db.connect() as conn:
             person_channel_time_table = Table('timeChannels', metadata, autoload=True, autoload_with=conn)
-            insert_statement = person_channel_time_table.insert().values(channelName=channel_name, dedicatedName=person, channelID=new_time_channel.id, channelTimezone=timezone_for_person)
+            insert_statement = person_channel_time_table.insert().values(channelName=channel_name, dedicatedName=person, channelID=new_time_channel.id, channelTimezone=timezone_for_person, guild_id=guild.id)
             conn.execute(insert_statement)
             select_st = select([person_channel_time_table])
             res = conn.execute(select_st)
