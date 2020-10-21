@@ -264,7 +264,7 @@ async def create_time_channel(ctx, person, timezone_for_person):
         guild.default_role: PermissionOverwrite(read_messages=False, connect=False)
     }
     staff_category = get(ctx.guild.categories, name="STAFF")
-    new_time_channel = await guild.create_voice_channel(channel_name, overwrites=overwrite, category=staff_category)
+    new_time_channel = await guild.create_voice_channel(channel_name, overwrites=overwrite, category=staff_category or ctx.channel.category)
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
