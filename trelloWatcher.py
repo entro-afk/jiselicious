@@ -121,7 +121,7 @@ async def update_trello_cards_and_time():
                                 await msg.add_reaction(emoji)
                                 hoster_receiving_codes = client.get_user(_row[2])
                                 guild = client.get_guild(jiselConf['guild_id'])
-                                hoster_roles = [u.roles for u in guild.members if u.id == _row[2]][0]
+                                hoster_roles = [u.roles for u in guild.members if u.id == _row[2]]and [u.roles for u in guild.members if u.id == _row[2]][0]
                                 hoster_role_names = [role.name for role in hoster_roles]
                                 is_veteran_hoster = jiselConf['veteran_hoster_role_name'] in hoster_role_names
                                 if card_action['memberCreator']['username'] in jiselConf['trello']['special_sender_usernames'] and not is_veteran_hoster:
