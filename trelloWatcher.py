@@ -129,7 +129,7 @@ async def update_trello_cards_and_time():
                                     if not card_has_codes:
                                         num_codes_needed = find_number_of_codes_needed(card)
                                         append_random_codes(card, num_codes_needed)
-
+                                    await client.wait_until_ready()
                                     code_giver = client.get_user(jiselConf['trello']['trello_discord_id_pair'][card_action['memberCreator']['username']])
                                     embed = Embed(title=f"You have sent {hoster_receiving_codes} the following codes:", description=card.description, color=0x00ff00)
                                     await code_giver.send(embed=embed)
