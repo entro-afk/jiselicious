@@ -177,7 +177,7 @@ async def update_trello_cards_and_time():
                     for _row in res:
                         former_name = _row[0]
                         now_time = datetime.datetime.today().now(pytz.timezone(_row[3])).strftime('%H:%M')
-                        if _row[0] != f"⌚ {_row[1]}'s time: {now_time}":
+                        if _row[0] != f"⌚ {_row[1]}: {now_time}":
                             update_statement = channel_time_table.update().values(
                                 channelName=f"⌚ {_row[1]}: {now_time}").where(
                                 and_(
@@ -191,7 +191,7 @@ async def update_trello_cards_and_time():
                             if guild:
                                 channel = get(guild.voice_channels, id=int(_row[2]))
                                 if channel:
-                                    await channel.edit(name=f"⌚ {_row[1]}'s time: {now_time}")
+                                    await channel.edit(name=f"⌚ {_row[1]}: {now_time}")
             except Exception as err:
                 print(err)
 
