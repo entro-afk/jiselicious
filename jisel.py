@@ -22,6 +22,7 @@ import threading
 from typing import Union
 from remoteGoogImage import detect_text_uri
 import pytz
+import math
 client = commands.Bot(command_prefix='+')
 
 
@@ -710,9 +711,311 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
                     new_card = ec_logs.add_card(message.author.nick or message.author.name, card_content)
                     new_card.change_pos("bottom")
 
-@client.command(pass_context=True, name="addQA")
-async def add_question_answer(ctx, *args):
-    pass
+@client.command(pass_context=True, name="getquestion")
+async def get_answers_to_question(ctx, *args):
+    question = None
+    question_id = None
+    items = []
+    potential_name_or_id = ' '.join(args).split("|")[0]
+    if potential_name_or_id.strip().isnumeric():
+        question_id = potential_name_or_id
+    else:
+        question = potential_name_or_id
+
+
+    try:
+        answers_to_question = []
+        table_answers = get_table_answers(question_id, question)
+        for item_name in table_answers:
+            answers_to_question.append("▫️" + item_name['answer'])
+        if question_id:
+            question = get_question_by_id(question_id)
+        else:
+            question_id = get_id_of_question(question)
+        embed = Embed(title=f"Question #{question_id}", description=f"{question}", color=0x00ff00)
+        answer_ids = '\n'.join([str(answer_row['id']) for answer_row in table_answers])
+        answer_texts = '\n'.join([answer_row['answer'] for answer_row in table_answers])
+        embed.add_field(name='Answer ID', value=f"{answer_ids}", inline=True)
+        embed.add_field(name='Answer', value=f"{answer_texts}", inline=True)
+
+        await ctx.message.channel.send(embed=embed)
+    except Exception as err:
+        print(err)
+
+def get_question_by_id(question_id):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            questions_table = Table('triviaQuestions', metadata, autoload=True, autoload_with=conn)
+            select_st = select([questions_table]).where(questions_table.c.id == question_id)
+            res = conn.execute(select_st)
+            for row in res:
+                question = row[1]
+            return question
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+def get_id_of_question(question):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            questions_table = Table('triviaQuestions', metadata, autoload=True, autoload_with=conn)
+            select_st = select([questions_table]).where(questions_table.c.question == question)
+            res = conn.execute(select_st)
+            for row in res:
+                question = row[1]
+                question_id = row[0]
+                break
+            return question_id
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+
+def get_table_answers(question_id, question):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            questions_table = Table('triviaQuestions', metadata, autoload=True, autoload_with=conn)
+            if question_id:
+                condition = questions_table.c.id == question_id
+            else:
+                condition = questions_table.c.question == question
+            select_st = select([questions_table]).where(condition)
+            res = conn.execute(select_st)
+            for row in res:
+                question = row[1]
+                question_id = row[0]
+            answers_table = Table('triviaAnswers', metadata, autoload=True, autoload_with=conn)
+            select_st = select([answers_table]).where(answers_table.c.question_id == question_id)
+            res = conn.execute(select_st)
+            answers_to_question = []
+            for row in res:
+                answers_to_question.append({
+                    'id': row.id,
+                    'answer': row.answer
+                })
+            return answers_to_question
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+@client.command(pass_context=True, name="createquestion")
+async def create_question(ctx, *args):
+    question=""
+    items = []
+    if "|" in args:
+        question = ' '.join(args).split("|")[0]
+        items = ' '.join(args).split("|")[1:]
+    else:
+        question = ' '.join(args)
+    question = question.strip()
+    answers_to_question = []
+    question_id = create_db_questions(question, items, answers_to_question)
+    embed = Embed(title=f"Question ID#{question_id} Created", description=question, color=0x00ff00)
+    answer_ids = '\n'.join([str(answer_row['id']) for answer_row in answers_to_question])
+    answer_texts = '\n'.join([answer_row['answer'] for answer_row in answers_to_question])
+    embed.add_field(name='Answer ID', value=f"{answer_ids}")
+    embed.add_field(name='Answer', value=f"{answer_texts}")
+    await ctx.message.channel.send(embed=embed)
+
+def create_db_questions(question, items, answers_to_question):
+    try:
+        db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=
+        jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+        db = create_engine(db_string)
+        metadata = MetaData(schema="pwm")
+
+        with db.connect() as conn:
+            questions_table = Table('triviaQuestions', metadata, autoload=True, autoload_with=conn)
+            insert_statement = questions_table.insert().values(question=question)
+            res = conn.execute(insert_statement)
+            question_id = res.inserted_primary_key[0]
+
+
+            answers_table = Table('triviaAnswers', metadata, autoload=True, autoload_with=conn)
+            select_st = select([answers_table])
+
+            for item in items:
+                insert_statement = answers_table.insert().values(answer=item.strip(), question_id=question_id)
+                conn.execute(insert_statement)
+            select_st = select([answers_table]).where(answers_table.c.question_id == question_id)
+            res = conn.execute(select_st)
+            for row in res:
+                answers_to_question.append({
+                    "id": row.id,
+                    "answer": row.answer
+                })
+            return question_id
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+@client.command(pass_context=True, name="answerquestion")
+async def add_answers_question(ctx, *args):
+    question_id = None
+    question = ""
+
+    items = []
+    question = ' '.join(args).split("|")[0]
+    items = ' '.join(args).split("|")[1]
+
+    try:
+        if question.strip().isnumeric():
+            question_id = int(question.strip())
+        question_answers = []
+        gathered_question = add_to_db_question(question_id, question.strip(), items, question_answers)
+        embed = Embed(title=f"Added to Question #{gathered_question['id']}", description=f"{gathered_question['question']}:\n" + '\n'.join(question_answers), color=0x00ff00)
+        for answer_row in question_answers:
+            embed.add_field(name='Answer ID', value=f"{answer_row['id']}", inline=True)
+            embed.add_field(name='Answer', value=f"{answer_row['answer']}", inline=True)
+        await ctx.message.channel.send(embed=embed)
+    except Exception as err:
+        print(err)
+
+def add_to_db_question(question_id, question, items, question_answers):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+
+    try:
+        with db.connect() as conn:
+            questions_table = Table('triviaQuestions', metadata, autoload=True, autoload_with=conn)
+            if question_id:
+                condition = questions_table.c.id == question_id
+            else:
+                condition = questions_table.c.question == question
+            select_st = select([questions_table]).where(condition)
+            res = conn.execute(select_st)
+            gathered_question = [{column: value for column, value in rowproxy.items()} for rowproxy in res][0]
+
+
+            answers_table = Table('triviaAnswers', metadata, autoload=True, autoload_with=conn)
+            for item in items.split(","):
+                insert_statement = answers_table.insert().values(answer=item.strip(), question_id=gathered_question['id'])
+                conn.execute(insert_statement)
+            select_st = select([answers_table]).where(answers_table.c.question_id == gathered_question['id'])
+            res = conn.execute(select_st)
+            for row in res:
+                question_answers.append({
+                    'id': row.id,
+                    'answer': row.answer
+                })
+
+            return gathered_question
+
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+def delete_question_by_id(question_id):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            questions_table = Table('triviaQuestions', metadata, autoload=True, autoload_with=conn)
+            delete_query = f"DELETE FROM pwm.\"triviaQuestions\" WHERE id={question_id}"
+            res = conn.execute(delete_query)
+            delete_answers_query = f"DELETE FROM pwm.\"triviaAnswers\" WHERE \"question_id\"={question_id}"
+            res2 = conn.execute(delete_answers_query)
+            return True
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+@client.command(pass_context=True, name="deleteanswer")
+@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+async def delete_answer(ctx, id):
+    result_rom_deletion = delete_answer_by_id(id)
+    if result_rom_deletion:
+        embed = Embed(title=f"Answer #{id} Deleted:", color=0x00ff00)
+        await ctx.message.channel.send(embed=embed)
+
+
+def delete_answer_by_id(answer_id):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            delete_answers_query = f"DELETE FROM pwm.\"triviaAnswers\" WHERE \"id\"={answer_id}"
+            res2 = conn.execute(delete_answers_query)
+            return True
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+@client.command(pass_context=True, name="delete")
+@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+async def delete_question(ctx, id):
+    gathered_question = get_question_by_id(id)
+    result_from_deletion = delete_question_by_id(id)
+    if result_from_deletion:
+        embed = Embed(title=f"Question #{id} Deleted:", description=gathered_question, color=0x00ff00)
+        await ctx.message.channel.send(embed=embed)
+
+@client.command(pass_context=True, name="listquestions")
+async def get_questions_table(ctx):
+    list_rows = get_questions()
+    description_rows = []
+
+    for row in list_rows:
+        description_rows.append(f"#{row['id']}: {row['question']}")
+    max_n = math.ceil(len(description_rows) / 20)
+    embed_sets = []
+    i = 0
+    while i < max_n:
+        begin_num = i*20
+        embed = Embed(title=f"Existing Questions", description='\n'.join(description_rows[begin_num:begin_num+20]), color=0x00ff00)
+        embed_sets.append(embed)
+        i += 1
+    for embed in embed_sets:
+        await ctx.message.channel.send(embed=embed)
+
+def get_questions():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            questions = []
+            questions_table = Table('triviaQuestions', metadata, autoload=True, autoload_with=conn)
+            select_st = select([questions_table])
+            res = conn.execute(select_st)
+            for row in res:
+                question = row[1]
+                questions.append({
+                    "id": row[0],
+                    "question": question,
+                })
+            return questions
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
 
 @client.command(pass_context=True, name="updatecomplete")
 async def update_complete_cards(ctx, start_date=""):
@@ -824,7 +1127,7 @@ async def hoster_stats(ctx, hoster_name):
             await ctx.send(f"Hoster {hoster_name}'s Info:\n{found_name_in_tally[0].description}")
 
 # test token
-# client.run(channelsConf['test_bot_token'])
+# client.run(jiselConf['test_bot_token'])
 # pwm token
 client.run(jiselConf['bot_token'])
 
