@@ -181,7 +181,7 @@ async def update_trello_cards_and_time():
                             update_statement = channel_time_table.update().values(
                                 channelName=f"⌚ {_row[1]}: {now_time}").where(
                                 and_(
-                                    channel_time_table.c.channelName != f"⌚ {_row[1]}'s time: {now_time}",
+                                    channel_time_table.c.channelName != f"⌚ {_row[1]}: {now_time}",
                                     channel_time_table.c.channelID == _row[2]
                                 )
                             )
