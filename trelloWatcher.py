@@ -24,8 +24,11 @@ import pytz
 import random
 
 client = commands.Bot(command_prefix='+')
-
-
+trivia_questions = [{
+    "question": "Who is the Simp King of Archosaur City?",
+    "answer": "Evade"
+}]
+has_asked_a_question = False
 with open(r'jiselConf.yaml') as file:
     # The FullLoader parameter handles the conversion from YAML
     # scalar values to Python the dictionary format
@@ -48,11 +51,21 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog']
 
 gc = gspread.authorize(credentials)
 
+random_minute = random.randint(53, 54)
+
+
 @client.event
 async def on_ready():
+    global random_minute
     print('Bot is ready.')
     while True:
         try:
+            now = datetime.datetime.now()
+            print('The random minute------', random_minute)
+            if now.minute == random_minute:
+                print('Got random minute------', now.minute)
+                await ask_a_question()
+                random_minute = random.randint(0, 31)
             await update_trello_cards_and_time()
             await asyncio.sleep(3.0)
         except Exception as err:
@@ -93,6 +106,7 @@ def append_random_codes(card, number_of_codes):
 
     card.set_description(card.description + f"\n{codes_sent}")
 async def update_trello_cards_and_time():
+    global has_asked_a_question
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
@@ -165,7 +179,7 @@ async def update_trello_cards_and_time():
                         now_time = datetime.datetime.today().now(pytz.timezone(_row[3])).strftime('%H:%M')
                         if _row[0] != f"⌚ {_row[1]}'s time: {now_time}":
                             update_statement = channel_time_table.update().values(
-                                channelName=f"⌚ {_row[1]}'s time: {now_time}").where(
+                                channelName=f"⌚ {_row[1]}: {now_time}").where(
                                 and_(
                                     channel_time_table.c.channelName != f"⌚ {_row[1]}'s time: {now_time}",
                                     channel_time_table.c.channelID == _row[2]
@@ -187,7 +201,14 @@ async def update_trello_cards_and_time():
             conn.close()
         db.dispose()
 
-
+async def ask_a_question():
+    guild = client.get_guild(jiselConf['guild_id'])
+    trivia_channel = get(guild.text_channels, name="trivia")
+    if trivia_channel:
+        has_asked_a_question = True
+        x = random.randint(0, len(trivia_questions) - 1)
+        embed = Embed(title="It's Trivia Time!", description=f"{trivia_questions[x]['question']}", color=7506394)
+        await trivia_channel.send(embed=embed)
 
 
 # test token

@@ -47,6 +47,10 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog']
 
 gc = gspread.authorize(credentials)
 
+current_trivia_question = {
+    "question": "Who is the Simp King of Archosaur City?",
+    "answer": "Evade"
+}
 
 async def emoji_success_feedback(message):
     emoji = get(client.emojis, name='yes')
@@ -255,11 +259,12 @@ def bucket_same_prefix(codes):
 
 
 @client.command(pass_context=True, name='timechannel')
-async def create_time_channel(ctx, person, timezone_for_person):
+async def create_time_channel(ctx, timezone_for_person, *args):
+    person = ' '.join(args)
     guild = ctx.message.guild
     # current_datetime = datetime.datetime.today().now(pytz.timezone('Etc/GMT-2'))
     current_datetime = datetime.datetime.today().now(pytz.timezone(timezone_for_person))
-    channel_name = f"⌚ {person}'s time: {current_datetime.strftime('%H:%M')}"
+    channel_name = f"⌚ {person}: {current_datetime.strftime('%H:%M')}"
     overwrite = {
         guild.default_role: PermissionOverwrite(read_messages=False, connect=False)
     }
@@ -468,15 +473,22 @@ async def main(message):
         handle_complete_events(message),
         handle_request_event(message),
         handle_bug_report(message),
+        handle_trivia_message(message)
     )
 
-
+async def handle_trivia_message(message):
+    if message.channel.name == 'trivia':
+        if current_trivia_question:
+            if message.clean_content.lower() == current_trivia_question['answer'].lower():
+                embed = Embed(title="That's correct!", description=f"<:PWM_yes:770642224249045032> Congratulations, <@!{message.author.id}>.", color=4437377)
+                await message.channel.send(embed=embed)
 @client.event
 async def on_message(message):
     if message.author.id != client.user.id:
         await main(message)
 
     await client.process_commands(message)
+
 
 @client.event
 async def on_raw_reaction_add(payload):
@@ -496,6 +508,7 @@ async def on_raw_reaction_add(payload):
 
 
         print(payload)
+
 
 def extract_event_number(message):
     message_split_into_lines = message.clean_content.split("\n")
@@ -696,6 +709,10 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
                     card_content = f"Server: {hoster_server}" + "\n" + message.clean_content.split('\n')[1] + "\n" + '   '.join(codes) + "\n\n#" + str(event_number)
                     new_card = ec_logs.add_card(message.author.nick or message.author.name, card_content)
                     new_card.change_pos("bottom")
+
+@client.command(pass_context=True, name="addQA")
+async def add_question_answer(ctx, *args):
+    pass
 
 @client.command(pass_context=True, name="updatecomplete")
 async def update_complete_cards(ctx, start_date=""):
