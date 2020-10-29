@@ -261,7 +261,7 @@ async def ask_a_question():
     if trivia_channel:
         x = random.randint(0, len(trivia_questions)-1)
         embed = Embed(title="It's Trivia Time!", description=f"{trivia_questions[x]['question']}", color=7506394)
-        set_current_question(trivia_questions[0]['id'])
+        set_current_question(trivia_questions[x]['id'])
         await trivia_channel.send(embed=embed)
 
 def get_trivia_leader_board():
