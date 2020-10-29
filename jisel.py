@@ -610,7 +610,7 @@ async def ask_a_question(ctx):
     if trivia_channel:
         x = random.randint(0, len(all_questions)-1)
         embed = Embed(title="It's Trivia Time!", description=f"{all_questions[x]['question']}", color=7506394)
-        set_current_question(all_questions[0]['id'])
+        set_current_question(all_questions[x]['id'])
         await trivia_channel.send(embed=embed)
 
 @client.event
