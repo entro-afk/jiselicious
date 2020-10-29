@@ -519,7 +519,7 @@ def get_trivia_leader_board():
             conn.close()
         db.dispose()
 
-@client.command(pass_context=True, name="cleartrivialeaderboard")
+@client.command(pass_context=True, name="trivialeaderboard")
 @commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
 async def get_leaderboard(ctx):
     participants = get_trivia_leader_board()
