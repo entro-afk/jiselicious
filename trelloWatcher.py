@@ -84,9 +84,8 @@ async def on_ready():
             print('The random minute------', random_minute)
             if now.minute == random_minute:
                 print('Got random minute------', now.minute)
-                if not get_current_trivia_question_id():
-                    await ask_a_question()
-                    random_minute = random.randint(0, 30)
+                await ask_a_question()
+                random_minute = random.randint(0, 30)
             await update_trello_cards_and_time()
             await asyncio.sleep(3.0)
         except Exception as err:
@@ -255,14 +254,39 @@ def set_current_question(question_id):
             conn.close()
         db.dispose()
 
+def get_question_by_id(question_id):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            questions_table = Table('triviaQuestions', metadata, autoload=True, autoload_with=conn)
+            select_st = select([questions_table]).where(questions_table.c.id == question_id)
+            res = conn.execute(select_st)
+            for row in res:
+                question = row[1]
+            return question
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+
 async def ask_a_question():
     guild = client.get_guild(jiselConf['guild_id'])
     trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
     if trivia_channel:
-        x = random.randint(0, len(trivia_questions)-1)
-        embed = Embed(title="It's Trivia Time!", description=f"{trivia_questions[x]['question']}", color=7506394)
-        set_current_question(trivia_questions[x]['id'])
-        await trivia_channel.send(embed=embed)
+        curr_question_id = get_current_trivia_question_id()
+        if not curr_question_id:
+            x = random.randint(0, len(trivia_questions)-1)
+            embed = Embed(title="It's Trivia Time!", description=f"{trivia_questions[x]['question']}", color=7506394)
+            set_current_question(trivia_questions[x]['id'])
+            await trivia_channel.send(embed=embed)
+        else:
+            curr_question = get_question_by_id(curr_question_id)
+            embed = Embed(title="It's Trivia Time!", description=f"{curr_question}", color=7506394)
+            await trivia_channel.send(embed=embed)
 
 def get_trivia_leader_board():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
