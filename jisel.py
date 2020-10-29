@@ -616,6 +616,13 @@ def get_current_trivia_question_id():
             conn.close()
         db.dispose()
 
+@client.command(pass_context=True, name="currquestion")
+@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+async def get_curr_question(ctx):
+    current_trivia_question_id = get_current_trivia_question_id()
+    if current_trivia_question_id:
+        await get_answers_to_question(ctx, current_trivia_question_id)
+
 @client.event
 async def on_message(message):
     if message.author.id != client.user.id:
