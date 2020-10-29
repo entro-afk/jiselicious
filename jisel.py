@@ -540,7 +540,7 @@ def upsert_to_trivia_leader_board(discord_id, discord_name, score):
         with db.connect() as conn:
             participants = []
             leaderboard_table = Table('triviaLeaderboard', metadata, autoload=True, autoload_with=conn)
-            update_or_insert_charge_query = f"INSERT INTO pwm.\"triviaLeaderboard\" (\"discord_id\", \"discord_name\", \"score\") VALUES ({discord_id}, \'{discord_name}\', {score}) ON CONFLICT (\"discord_id\") DO UPDATE SET \"score\" = \"triviaLeaderboard\".\"score\" + {score}"
+            update_or_insert_charge_query = f"INSERT INTO pwm.\"triviaLeaderboard\" (\"discord_id\", \"discord_name\", \"score\", \"lastUpdated\") VALUES ({discord_id}, \'{discord_name}\', {score}, {datetime.datetime.now()}) ON CONFLICT (\"discord_id\") DO UPDATE SET \"score\" = \"triviaLeaderboard\".\"score\" + {score}"
             result = conn.execute(update_or_insert_charge_query)
             select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc(), leaderboard_table.c.lastUpdated)
             res = conn.execute(select_st)
