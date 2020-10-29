@@ -621,9 +621,13 @@ def get_current_trivia_question_id():
 async def get_curr_question(ctx):
     current_trivia_question_id = get_current_trivia_question_id()
     if current_trivia_question_id:
-        await get_answers_to_question(ctx, str(current_trivia_question_id))
+        curr_question = get_question_by_id(current_trivia_question_id)
+        embed = Embed(title="It's Trivia Time!", description=f"{curr_question}", color=7506394)
+        private_bot_feedback_channel = get(ctx.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+        await private_bot_feedback_channel.send(embed=embed)
+
     else:
-        embed = Embed(title="No Current Question at the moment", description="There is no current question at the moment. Check back next hour", color=7506394)
+        embed = Embed(title="No Current Question at the moment", description="There is no current question at the moment. Check back later", color=7506394)
         await ctx.message.channel.send(embed=embed)
 
 @client.event
