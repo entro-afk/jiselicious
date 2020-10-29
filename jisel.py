@@ -474,17 +474,17 @@ async def main(message):
     )
 
 async def handle_trivia_message(message):
-    if message.channel.name == 'trivia':
+    if message.channel.name == jiselConf['trivia_channel']:
         current_trivia_question_id = get_current_trivia_question_id()
         if current_trivia_question_id:
             answers = get_table_answers(current_trivia_question_id, None)
             lower_case_answers = [answer_row['answer'].lower() for answer_row in answers]
             if message.clean_content.lower() in lower_case_answers:
-                embed = Embed(title="That's correct!", description=f"<:PWM_yes:770642224249045032> Congratulations, <@!{message.author.id}>.", color=4437377)
+                embed = Embed(title="That's correct!", description=f"<:PWM_yes:770642224249045032> Congratulations, <@!{message.author.id}>. You've gained 10 points!", color=4437377)
                 await message.channel.send(embed=embed)
                 result_remove_curr_question = remove_current_trivia(current_trivia_question_id)
                 if result_remove_curr_question:
-                    private_bot_feedback_channel = await client.fetch_channel(jiselConf['bot_feed_back_channel']['id'])
+                    private_bot_feedback_channel = get(message.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
                     embed = Embed(title="Question of this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=7506394)
                     await private_bot_feedback_channel.send(embed=embed)
                     top_ten = upsert_to_trivia_leader_board(message.author.id, message.author.name, 10)

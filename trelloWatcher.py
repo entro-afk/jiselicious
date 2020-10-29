@@ -47,7 +47,7 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog']
 
 gc = gspread.authorize(credentials)
 
-random_minute = random.randint(0, 30)
+random_minute = random.randint(55, 55)
 
 def get_questions():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
@@ -190,18 +190,22 @@ async def update_trello_cards_and_time():
 
             try:
                 now = datetime.datetime.now()
-                if now.weekday() == 6 and now.hour == 23 and now.minute == 35:
+                if now.weekday() == 2 and now.hour == 21 and now.minute >= 47:
                     top_3 = get_trivia_leader_board()
                     if top_3:
                         list_leader = []
                         i=1
                         for leader in top_3:
-                            row_leader = f"\n{i} - <@!{leader['id']}> ()"
+                            row_leader = f"\n{i if i >1 else '🏆'} - <@!{leader['id']}> ({leader['score']} points)"
                             i += 1
                             list_leader.append(row_leader)
-                        embed = Embed(title="Weekly Leader Board", description=f"This week's Trivia Leaderboard:\n\n1 - <!{top_3[0]['id']}> (_", color=0x00ff00)
+                        stringified_top_3 = '\n'.join(list_leader)
+                        embed = Embed(title="Weekly Leader Board", description=f"This week's Trivia Leaderboard:\n{stringified_top_3}\n\nCongratulations to <@!{top_3[0]['id']}>! 🎉 You've won this week's Trivia.\nA moderator will contact you privately with your prize.\n\n**Keep participating to find out who will be the next Trivia Master of the week!**", color=0x00ff00)
+                        guild = client.get_guild(jiselConf['guild_id'])
+                        trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
+                        await trivia_channel.send("", embed=embed)
                         clear_trivia_leaderboard()
-                        private_bot_feedback_channel = await client.fetch_channel(jiselConf['bot_feed_back_channel']['id'])
+                        private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
                         embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
                         await private_bot_feedback_channel.send(embed=embed)
                 if now.minute % 15 == 0:
@@ -252,7 +256,7 @@ def set_current_question(question_id):
 
 async def ask_a_question():
     guild = client.get_guild(jiselConf['guild_id'])
-    trivia_channel = get(guild.text_channels, name="trivia")
+    trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
     if trivia_channel:
         x = random.randint(0, len(trivia_questions)-1)
         embed = Embed(title="It's Trivia Time!", description=f"{trivia_questions[x]['question']}", color=7506394)
