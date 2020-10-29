@@ -77,6 +77,7 @@ trivia_questions = get_questions()
 @client.event
 async def on_ready():
     global random_minute
+    global last_hour
     print('Bot is ready.')
     while True:
         try:
