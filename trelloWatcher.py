@@ -22,13 +22,8 @@ import threading
 import dateutil.parser
 import pytz
 import random
-
 client = commands.Bot(command_prefix='+')
-trivia_questions = [{
-    "question": "Who is the Simp King of Archosaur City?",
-    "answer": "Evade"
-}]
-has_asked_a_question = False
+
 with open(r'jiselConf.yaml') as file:
     # The FullLoader parameter handles the conversion from YAML
     # scalar values to Python the dictionary format
@@ -49,10 +44,35 @@ scope = ['https://spreadsheets.google.com/feeds',
 
 credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog'], scope)  # Your json file here
 
+
 gc = gspread.authorize(credentials)
 
-random_minute = random.randint(53, 54)
+random_minute = random.randint(0, 30)
 
+def get_questions():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            questions = []
+            questions_table = Table('triviaQuestions', metadata, autoload=True, autoload_with=conn)
+            select_st = select([questions_table])
+            res = conn.execute(select_st)
+            for row in res:
+                question = row[1]
+                questions.append({
+                    "id": row[0],
+                    "question": question,
+                })
+            return questions
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+trivia_questions = get_questions()
 
 @client.event
 async def on_ready():
@@ -65,7 +85,7 @@ async def on_ready():
             if now.minute == random_minute:
                 print('Got random minute------', now.minute)
                 await ask_a_question()
-                random_minute = random.randint(0, 31)
+                random_minute = random.randint(0, 30)
             await update_trello_cards_and_time()
             await asyncio.sleep(3.0)
         except Exception as err:
@@ -170,6 +190,20 @@ async def update_trello_cards_and_time():
 
             try:
                 now = datetime.datetime.now()
+                if now.weekday() == 6 and now.hour == 23 and now.minute == 35:
+                    top_3 = get_trivia_leader_board()
+                    if top_3:
+                        list_leader = []
+                        i=1
+                        for leader in top_3:
+                            row_leader = f"\n{i} - <@!{leader['id']}> ()"
+                            i += 1
+                            list_leader.append(row_leader)
+                        embed = Embed(title="Weekly Leader Board", description=f"This week's Trivia Leaderboard:\n\n1 - <!{top_3[0]['id']}> (_", color=0x00ff00)
+                        clear_trivia_leaderboard()
+                        private_bot_feedback_channel = await client.fetch_channel(jiselConf['bot_feed_back_channel']['id'])
+                        embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
+                        await private_bot_feedback_channel.send(embed=embed)
                 if now.minute % 15 == 0:
                     channel_time_table = Table('timeChannels', metadata, autoload=True, autoload_with=conn)
                     select_st = select([channel_time_table])
@@ -201,15 +235,67 @@ async def update_trello_cards_and_time():
             conn.close()
         db.dispose()
 
+def set_current_question(question_id):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            current_question_table = Table('currentQuestion', metadata, autoload=True, autoload_with=conn)
+            insert_statement = current_question_table.insert().values(question_id=question_id)
+            conn.execute(insert_statement)
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
 async def ask_a_question():
     guild = client.get_guild(jiselConf['guild_id'])
     trivia_channel = get(guild.text_channels, name="trivia")
     if trivia_channel:
-        has_asked_a_question = True
-        x = random.randint(0, len(trivia_questions) - 1)
+        x = random.randint(0, len(trivia_questions)-1)
         embed = Embed(title="It's Trivia Time!", description=f"{trivia_questions[x]['question']}", color=7506394)
+        set_current_question(trivia_questions[0]['id'])
         await trivia_channel.send(embed=embed)
 
+def get_trivia_leader_board():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            participants = []
+            leaderboard_table = Table('triviaLeaderboard', metadata, autoload=True, autoload_with=conn)
+            select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc())
+            res = conn.execute(select_st)
+            for _row in res:
+                participants.append({
+                    'id': _row[0],
+                    'name': _row[1],
+                    'score': _row[2]
+                })
+            return participants[0:3]
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+def clear_trivia_leaderboard():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            delete_query = "DELETE FROM pwm.\"triviaLeaderboard\""
+            res = conn.execute(delete_query)
+            return True
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
 
 # test token
 # client.run(channelsConf['test_bot_token'])

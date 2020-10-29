@@ -48,10 +48,6 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog']
 
 gc = gspread.authorize(credentials)
 
-current_trivia_question = {
-    "question": "Who is the Simp King of Archosaur City?",
-    "answer": "Evade"
-}
 
 async def emoji_success_feedback(message):
     emoji = get(client.emojis, name='yes')
@@ -479,10 +475,110 @@ async def main(message):
 
 async def handle_trivia_message(message):
     if message.channel.name == 'trivia':
-        if current_trivia_question:
-            if message.clean_content.lower() == current_trivia_question['answer'].lower():
+        current_trivia_question_id = get_current_trivia_question_id()
+        if current_trivia_question_id:
+            answers = get_table_answers(current_trivia_question_id, None)
+            lower_case_answers = [answer_row['answer'].lower() for answer_row in answers]
+            if message.clean_content.lower() in lower_case_answers:
                 embed = Embed(title="That's correct!", description=f"<:PWM_yes:770642224249045032> Congratulations, <@!{message.author.id}>.", color=4437377)
                 await message.channel.send(embed=embed)
+                result_remove_curr_question = remove_current_trivia(current_trivia_question_id)
+                if result_remove_curr_question:
+                    private_bot_feedback_channel = await client.fetch_channel(jiselConf['bot_feed_back_channel']['id'])
+                    embed = Embed(title="Question of this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=7506394)
+                    await private_bot_feedback_channel.send(embed=embed)
+                    top_ten = upsert_to_trivia_leader_board(message.author.id, message.author.name, 10)
+                    embed = Embed(title="Current Top 10", description="In Descending Order", color=7506394)
+                    tag_names = [f"<@!{_row['id']}>" for _row in top_ten]
+                    scores = [str(_row['score']) for _row in top_ten]
+                    embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
+                    embed.add_field(name="Score", value="\n".join(scores), inline=True)
+                    await private_bot_feedback_channel.send(embed=embed)
+
+def upsert_to_trivia_leader_board(discord_id, discord_name, score):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            participants = []
+            leaderboard_table = Table('triviaLeaderboard', metadata, autoload=True, autoload_with=conn)
+            update_or_insert_charge_query = f"INSERT INTO pwm.\"triviaLeaderboard\" (\"discord_id\", \"discord_name\", \"score\") VALUES ({discord_id}, \'{discord_name}\', {score}) ON CONFLICT (\"discord_id\") DO UPDATE SET \"score\" = \"triviaLeaderboard\".\"score\" + {score}"
+            result = conn.execute(update_or_insert_charge_query)
+            select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc())
+            res = conn.execute(select_st)
+            for _row in res:
+                participants.append({
+                    'id': _row[0],
+                    'name': _row[1],
+                    'score': _row[2]
+                })
+            return participants[0:10]
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+
+def remove_current_trivia(question_id):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            curr_question_table = Table('currentQuestion', metadata, autoload=True, autoload_with=conn)
+            delete_query = f"DELETE FROM pwm.\"currentQuestion\" WHERE question_id={question_id}"
+            res = conn.execute(delete_query)
+            return True
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+
+def clear_trivia_leaderboard():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            delete_query = "DELETE FROM pwm.\"triviaLeaderboard\""
+            res = conn.execute(delete_query)
+            return True
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+@client.command(pass_context=True, name="cleartrivialeaderboard")
+@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+async def clear_leaderboard(ctx):
+    result_from_clear = clear_trivia_leaderboard()
+    if result_from_clear:
+        embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
+        await ctx.message.channel.send(embed=embed)
+
+def get_current_trivia_question_id():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            curr_question_table = Table('currentQuestion', metadata, autoload=True, autoload_with=conn)
+            select_st = select([curr_question_table])
+            res = conn.execute(select_st)
+            for _row in res:
+                return _row[1]
+            return None
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
 @client.event
 async def on_message(message):
     if message.author.id != client.user.id:
@@ -732,13 +828,20 @@ async def get_answers_to_question(ctx, *args):
             question = get_question_by_id(question_id)
         else:
             question_id = get_id_of_question(question)
-        embed = Embed(title=f"Question #{question_id}", description=f"{question}", color=0x00ff00)
-        answer_ids = '\n'.join([str(answer_row['id']) for answer_row in table_answers])
-        answer_texts = '\n'.join([answer_row['answer'] for answer_row in table_answers])
-        embed.add_field(name='Answer ID', value=f"{answer_ids}", inline=True)
-        embed.add_field(name='Answer', value=f"{answer_texts}", inline=True)
-
-        await ctx.message.channel.send(embed=embed)
+        i = 0
+        embed_sets = []
+        max_n = math.ceil(len(table_answers) / 20)
+        while i < max_n:
+            begin_num = i * 20
+            embed = Embed(title=f"Question ID#{question_id}" if i == 0 else "Continued", description=f"{question}", color=0x00ff00)
+            answer_ids = '\n'.join([str(answer_row['id']) for answer_row in table_answers[begin_num:begin_num + 20]])
+            answer_texts = '\n'.join([answer_row['answer'] for answer_row in table_answers[begin_num:begin_num + 20]])
+            embed.add_field(name='Answer ID', value=f"{answer_ids}", inline=True)
+            embed.add_field(name='Answer', value=f"{answer_texts}", inline=True)
+            embed_sets.append(embed)
+            i += 1
+        for embed in embed_sets:
+            await ctx.message.channel.send(embed=embed)
     except Exception as err:
         print(err)
 
@@ -825,12 +928,21 @@ async def create_question(ctx, *args):
     question = question.strip()
     answers_to_question = []
     question_id = create_db_questions(question, items, answers_to_question)
-    embed = Embed(title=f"Question ID#{question_id} Created", description=question, color=0x00ff00)
-    answer_ids = '\n'.join([str(answer_row['id']) for answer_row in answers_to_question])
-    answer_texts = '\n'.join([answer_row['answer'] for answer_row in answers_to_question])
-    embed.add_field(name='Answer ID', value=f"{answer_ids}")
-    embed.add_field(name='Answer', value=f"{answer_texts}")
-    await ctx.message.channel.send(embed=embed)
+    embed_sets = []
+    i = 0
+    max_n = math.ceil(len(answers_to_question) / 20)
+    while i < max_n:
+        begin_num = i * 20
+        embed = Embed(title=f"Question ID#{question_id} Created" if i == 0 else "Continued", description=question, color=0x00ff00)
+        answer_ids = '\n'.join([str(answer_row['id']) for answer_row in answers_to_question[begin_num:begin_num + 20]])
+        answer_texts = '\n'.join([answer_row['answer'] for answer_row in answers_to_question[begin_num:begin_num + 20]])
+        embed.add_field(name='Answer ID', value=f"{answer_ids}")
+        embed.add_field(name='Answer', value=f"{answer_texts}")
+        embed_sets.append(embed)
+        i += 1
+    for embed in embed_sets:
+        await ctx.message.channel.send(embed=embed)
+
 
 def create_db_questions(question, items, answers_to_question):
     try:
@@ -873,18 +985,29 @@ async def add_answers_question(ctx, *args):
 
     items = []
     question = ' '.join(args).split("|")[0]
-    items = ' '.join(args).split("|")[1]
+    items = ' '.join(args).split("|")[1:]
 
     try:
         if question.strip().isnumeric():
             question_id = int(question.strip())
         question_answers = []
         gathered_question = add_to_db_question(question_id, question.strip(), items, question_answers)
-        embed = Embed(title=f"Added to Question #{gathered_question['id']}", description=f"{gathered_question['question']}:\n" + '\n'.join(question_answers), color=0x00ff00)
-        for answer_row in question_answers:
-            embed.add_field(name='Answer ID', value=f"{answer_row['id']}", inline=True)
-            embed.add_field(name='Answer', value=f"{answer_row['answer']}", inline=True)
-        await ctx.message.channel.send(embed=embed)
+        embed_sets = []
+        i = 0
+        max_n = math.ceil(len(question_answers) / 20)
+        while i < max_n:
+            begin_num = i * 20
+            embed = Embed(title=f"Added to Question ID#{question_id} " if i == 0 else "Continued", description=gathered_question['question'], color=0x00ff00)
+            answer_ids = '\n'.join(
+                [str(answer_row['id']) for answer_row in question_answers[begin_num:begin_num + 20]])
+            answer_texts = '\n'.join(
+                [answer_row['answer'] for answer_row in question_answers[begin_num:begin_num + 20]])
+            embed.add_field(name='Answer ID', value=f"{answer_ids}")
+            embed.add_field(name='Answer', value=f"{answer_texts}")
+            embed_sets.append(embed)
+            i += 1
+        for embed in embed_sets:
+            await ctx.message.channel.send(embed=embed)
     except Exception as err:
         print(err)
 
@@ -906,7 +1029,7 @@ def add_to_db_question(question_id, question, items, question_answers):
 
 
             answers_table = Table('triviaAnswers', metadata, autoload=True, autoload_with=conn)
-            for item in items.split(","):
+            for item in items:
                 insert_statement = answers_table.insert().values(answer=item.strip(), question_id=gathered_question['id'])
                 conn.execute(insert_statement)
             select_st = select([answers_table]).where(answers_table.c.question_id == gathered_question['id'])
@@ -973,7 +1096,7 @@ async def delete_question(ctx, id):
     gathered_question = get_question_by_id(id)
     result_from_deletion = delete_question_by_id(id)
     if result_from_deletion:
-        embed = Embed(title=f"Question #{id} Deleted:", description=gathered_question, color=0x00ff00)
+        embed = Embed(title=f"Question ID#{id} Deleted:", description=gathered_question, color=0x00ff00)
         await ctx.message.channel.send(embed=embed)
 
 @client.command(pass_context=True, name="listquestions")
@@ -988,7 +1111,7 @@ async def get_questions_table(ctx):
     i = 0
     while i < max_n:
         begin_num = i*20
-        embed = Embed(title=f"Existing Questions", description='\n'.join(description_rows[begin_num:begin_num+20]), color=0x00ff00)
+        embed = Embed(title=f"Existing Questions" if i == 0 else "Continued", description='\n'.join(description_rows[begin_num:begin_num+20]), color=0x00ff00)
         embed_sets.append(embed)
         i += 1
     for embed in embed_sets:
