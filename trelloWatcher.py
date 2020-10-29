@@ -84,8 +84,9 @@ async def on_ready():
             print('The random minute------', random_minute)
             if now.minute == random_minute:
                 print('Got random minute------', now.minute)
-                await ask_a_question()
-                random_minute = random.randint(0, 30)
+                if not get_current_trivia_question_id():
+                    await ask_a_question()
+                    random_minute = random.randint(0, 30)
             await update_trello_cards_and_time()
             await asyncio.sleep(3.0)
         except Exception as err:
@@ -295,6 +296,24 @@ def clear_trivia_leaderboard():
             delete_query = "DELETE FROM pwm.\"triviaLeaderboard\""
             res = conn.execute(delete_query)
             return True
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+def get_current_trivia_question_id():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            curr_question_table = Table('currentQuestion', metadata, autoload=True, autoload_with=conn)
+            select_st = select([curr_question_table])
+            res = conn.execute(select_st)
+            for _row in res:
+                return _row[1]
+            return None
     except Exception as err:
         print(err)
         if conn:
