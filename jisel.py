@@ -622,6 +622,9 @@ async def get_curr_question(ctx):
     current_trivia_question_id = get_current_trivia_question_id()
     if current_trivia_question_id:
         await get_answers_to_question(ctx, str(current_trivia_question_id))
+    else:
+        embed = Embed(title="No Current Question at the moment", description="There is no current question at the moment. Check back next hour", color=7506394)
+        await ctx.message.channel.send(embed=embed)
 
 @client.event
 async def on_message(message):
