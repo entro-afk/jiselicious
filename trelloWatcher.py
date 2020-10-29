@@ -48,7 +48,7 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog']
 gc = gspread.authorize(credentials)
 
 random_minute = random.randint(0, 30)
-
+last_hour = 9
 def get_questions():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string)
@@ -83,9 +83,11 @@ async def on_ready():
             now = datetime.datetime.now()
             print('The random minute------', random_minute)
             if now.minute == random_minute:
-                print('Got random minute------', now.minute)
-                await ask_a_question()
-                random_minute = random.randint(0, 30)
+                if now.hour != last_hour:
+                    print('Got random minute------', now.minute)
+                    await ask_a_question()
+                    random_minute = random.randint(0, 30)
+                    last_hour = now.hour
             await update_trello_cards_and_time()
             await asyncio.sleep(3.0)
         except Exception as err:
