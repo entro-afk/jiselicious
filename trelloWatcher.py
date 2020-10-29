@@ -299,7 +299,7 @@ def get_trivia_leader_board():
         with db.connect() as conn:
             participants = []
             leaderboard_table = Table('triviaLeaderboard', metadata, autoload=True, autoload_with=conn)
-            select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc())
+            select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc(), leaderboard_table.c.lastUpdated.asc())
             res = conn.execute(select_st)
             for _row in res:
                 participants.append({
