@@ -486,7 +486,7 @@ async def handle_trivia_message(message):
                 result_remove_curr_question = remove_current_trivia(current_trivia_question_id)
                 if result_remove_curr_question:
                     private_bot_feedback_channel = get(message.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
-                    embed = Embed(title="Question of this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=7506394)
+                    embed = Embed(title="Current Question for this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=7506394)
                     await private_bot_feedback_channel.send(embed=embed)
                     top_ten = upsert_to_trivia_leader_board(message.author.id, message.author.name, 10)
                     embed = Embed(title="Current Top 10", description="In Descending Order", color=7506394)
@@ -495,6 +495,42 @@ async def handle_trivia_message(message):
                     embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
                     embed.add_field(name="Score", value="\n".join(scores), inline=True)
                     await private_bot_feedback_channel.send(embed=embed)
+
+def get_trivia_leader_board():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            participants = []
+            leaderboard_table = Table('triviaLeaderboard', metadata, autoload=True, autoload_with=conn)
+            select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc())
+            res = conn.execute(select_st)
+            for _row in res:
+                participants.append({
+                    'id': _row[0],
+                    'name': _row[1],
+                    'score': _row[2]
+                })
+            return participants
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+@client.command(pass_context=True, name="cleartrivialeaderboard")
+@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+async def get_leaderboard(ctx):
+    participants = get_trivia_leader_board()
+    embed = Embed(title="Current Top 10", description="In Descending Order", color=7506394)
+    if participants:
+        tag_names = [f"<@!{_row['id']}>" for _row in participants]
+        scores = [str(_row['score']) for _row in participants]
+        embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
+        embed.add_field(name="Score", value="\n".join(scores), inline=True)
+        await ctx.message.channel.send(embed=embed)
+
 
 def upsert_to_trivia_leader_board(discord_id, discord_name, score):
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
