@@ -621,7 +621,7 @@ def get_current_trivia_question_id():
 async def get_curr_question(ctx):
     current_trivia_question_id = get_current_trivia_question_id()
     if current_trivia_question_id:
-        await get_answers_to_question(ctx, current_trivia_question_id)
+        await get_answers_to_question(ctx, str(current_trivia_question_id))
 
 @client.event
 async def on_message(message):
