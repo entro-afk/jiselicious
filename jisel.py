@@ -23,6 +23,7 @@ from typing import Union
 from remoteGoogImage import detect_text_uri
 import pytz
 import math
+import random
 client = commands.Bot(command_prefix='+')
 
 
@@ -586,6 +587,31 @@ async def on_message(message):
 
     await client.process_commands(message)
 
+def set_current_question(question_id):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            current_question_table = Table('currentQuestion', metadata, autoload=True, autoload_with=conn)
+            insert_statement = current_question_table.insert().values(question_id=question_id)
+            conn.execute(insert_statement)
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+@client.command(pass_context=True, name="forcetrivia")
+@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+async def ask_a_question(ctx):
+    all_questions = get_questions()
+    trivia_channel = get(ctx.guild.text_channels, name=jiselConf['trivia_channel'])
+    if trivia_channel:
+        x = random.randint(0, len(all_questions)-1)
+        embed = Embed(title="It's Trivia Time!", description=f"{all_questions[x]['question']}", color=7506394)
+        set_current_question(all_questions[0]['id'])
+        await trivia_channel.send(embed=embed)
 
 @client.event
 async def on_raw_reaction_add(payload):
