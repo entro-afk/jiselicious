@@ -47,7 +47,7 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog']
 
 gc = gspread.authorize(credentials)
 
-random_minute = random.randint(55, 55)
+random_minute = random.randint(0, 30)
 
 def get_questions():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
@@ -190,7 +190,7 @@ async def update_trello_cards_and_time():
 
             try:
                 now = datetime.datetime.now()
-                if now.weekday() == 2 and now.hour == 21 and now.minute >= 47:
+                if now.weekday() == 6 and now.hour == 23 and now.minute >= 31:
                     top_3 = get_trivia_leader_board()
                     if top_3:
                         list_leader = []
