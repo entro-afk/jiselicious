@@ -884,6 +884,7 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
                     new_card.change_pos("bottom")
 
 @client.command(pass_context=True, name="getquestion")
+@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Admin")
 async def get_answers_to_question(ctx, *args):
     question = None
     question_id = None
