@@ -576,14 +576,14 @@ def upsert_to_trivia_leader_board(discord_id, discord_name, score):
         db.dispose()
 
 
-def remove_current_trivia(question_id):
+def remove_current_trivia():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
             curr_question_table = Table('currentQuestion', metadata, autoload=True, autoload_with=conn)
-            delete_query = f"DELETE FROM pwm.\"currentQuestion\" WHERE question_id={question_id}"
+            delete_query = "DELETE FROM pwm.\"currentQuestion\""
             res = conn.execute(delete_query)
             return True
     except Exception as err:
@@ -684,10 +684,10 @@ async def ask_a_question(ctx):
         current_trivia_question_obj = get_current_trivia_question_id()
         if current_trivia_question_obj:
             current_trivia_question_id = current_trivia_question_obj['question_id']
-            result_remove_curr_trivia = remove_current_trivia(current_trivia_question_id)
+            result_remove_curr_trivia = remove_current_trivia()
             if result_remove_curr_trivia:
                 private_bot_feedback_channel = get(ctx.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
-                embed = Embed(title="Previous Question Expired", description="A new question has been sent to the trivia channel", color=16426522)
+                embed = Embed(title=f"Previous Question (ID#{current_trivia_question_id}) Expired", description="A new question has been sent to the trivia channel", color=16426522)
                 await private_bot_feedback_channel.send(embed=embed)
 
         x = random.randint(0, len(all_questions)-1)
