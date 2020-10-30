@@ -493,7 +493,7 @@ async def handle_trivia_message(message):
                 if message.clean_content.lower() in lower_case_answers:
                     embed = Embed(title="That's correct!", description=f"<:PWM_yes:770642224249045032> Congratulations, <@!{message.author.id}>. You've gained 10 points!", color=4437377)
                     await message.channel.send(embed=embed)
-                    result_remove_curr_question = remove_current_trivia(current_trivia_question_id)
+                    result_remove_curr_question = remove_current_trivia()
                     if result_remove_curr_question:
                         embed = Embed(title="Current Question for this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=7506394)
                         await private_bot_feedback_channel.send(embed=embed)
@@ -508,7 +508,7 @@ async def handle_trivia_message(message):
                 print('Does it even acknowlege that time has expired-------------')
                 private_embed = embed = Embed(title="Current Question for this hour has already expired", description=f"<@!{message.author.id}> tried to answer an expired question.", color=16426522)
                 embed = Embed(title="Current Question for this hour has already expired", description=f"There was no winner. Try again next time!", color=16426522)
-                result_remove_curr_question = remove_current_trivia(current_trivia_question_id)
+                result_remove_curr_question = remove_current_trivia()
                 if result_remove_curr_question:
                     await message.channel.send(embed=embed)
                     await private_bot_feedback_channel.send(embed=private_embed)
