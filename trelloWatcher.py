@@ -234,6 +234,7 @@ async def update_trello_cards_and_time():
                         question_of_the_hour_message = await trivia_channel.fetch_message(int(trivia_of_hour_msg_id))
                         if question_of_the_hour_message:
                             await question_of_the_hour_message.delete()
+                            r.delete('lastmessageid')
 
                 if now.weekday() == 6 and now.hour == 23 and now.minute >= 31:
                     top_3 = get_trivia_leader_board()
