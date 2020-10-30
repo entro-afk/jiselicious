@@ -507,7 +507,7 @@ async def handle_trivia_message(message):
             else:
                 print('Does it even acknowlege that time has expired-------------')
                 private_embed = embed = Embed(title="Current Question for this hour has already expired", description=f"<@!{message.author.id}> tried to answer an expired question.", color=16426522)
-                embed = Embed(title="Current Question for this hour has already expired", description=f"There was no winner. Try again in the next coming hour.", color=16426522)
+                embed = Embed(title="Current Question for this hour has already expired", description=f"There was no winner. Try again next time!", color=16426522)
                 result_remove_curr_question = remove_current_trivia(current_trivia_question_id)
                 if result_remove_curr_question:
                     await message.channel.send(embed=embed)
