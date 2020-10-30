@@ -486,7 +486,8 @@ async def handle_trivia_message(message):
             time_expire = current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=15)
             print(time_expire)
             print(now)
-            if now < time_expire:
+            if now <= time_expire:
+                print('does it think that it did not expire---------')
                 answers = get_table_answers(current_trivia_question_id, None)
                 lower_case_answers = [answer_row['answer'].lower() for answer_row in answers]
                 if message.clean_content.lower() in lower_case_answers:
