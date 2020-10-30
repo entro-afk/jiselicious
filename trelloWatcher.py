@@ -48,7 +48,7 @@ r = redis.Redis(host='localhost', port=6379, db=0)
 
 gc = gspread.authorize(credentials)
 curr_minute = datetime.datetime.now().minute
-random_minute = random.randint(curr_minute,curr_minute)
+random_minute = random.randint(0, 30)
 
 def get_questions():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
