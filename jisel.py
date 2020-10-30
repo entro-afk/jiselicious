@@ -481,7 +481,7 @@ async def handle_trivia_message(message):
         if current_trivia_question_obj:
             private_bot_feedback_channel = get(message.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
             current_trivia_question_id = current_trivia_question_obj['question_id']
-            print(' what is 15 seconds plus---------', current_trivia_question_obj['time_asked'])
+            print(' what is 30 seconds plus---------', current_trivia_question_obj['time_asked'])
             now = datetime.datetime.now()
             time_expire = current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=15)
             print(time_expire)
@@ -691,7 +691,7 @@ async def ask_a_question(ctx):
                 await private_bot_feedback_channel.send(embed=embed)
 
         x = random.randint(0, len(all_questions)-1)
-        embed = Embed(title="It's Trivia Time! You have 15 seconds to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=7506394)
+        embed = Embed(title="It's Trivia Time! You have 30 seconds to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=7506394)
         set_current_question(all_questions[x]['id'])
         await trivia_channel.send(embed=embed)
 
