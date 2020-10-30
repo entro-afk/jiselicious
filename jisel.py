@@ -476,25 +476,35 @@ async def main(message):
 
 async def handle_trivia_message(message):
     if message.channel.name == jiselConf['trivia_channel']:
-        current_trivia_question_id = get_current_trivia_question_id()
-        if current_trivia_question_id:
-            answers = get_table_answers(current_trivia_question_id, None)
-            lower_case_answers = [answer_row['answer'].lower() for answer_row in answers]
-            if message.clean_content.lower() in lower_case_answers:
-                embed = Embed(title="That's correct!", description=f"<:PWM_yes:770642224249045032> Congratulations, <@!{message.author.id}>. You've gained 10 points!", color=4437377)
-                await message.channel.send(embed=embed)
+        current_trivia_question_obj = get_current_trivia_question_id()
+        if current_trivia_question_obj:
+            private_bot_feedback_channel = get(message.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+            current_trivia_question_id = current_trivia_question_obj['question_id']
+            if current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=15) > datetime.datetime.now():
+                answers = get_table_answers(current_trivia_question_id, None)
+                lower_case_answers = [answer_row['answer'].lower() for answer_row in answers]
+                if message.clean_content.lower() in lower_case_answers:
+                    embed = Embed(title="That's correct!", description=f"<:PWM_yes:770642224249045032> Congratulations, <@!{message.author.id}>. You've gained 10 points!", color=4437377)
+                    await message.channel.send(embed=embed)
+                    result_remove_curr_question = remove_current_trivia(current_trivia_question_id)
+                    if result_remove_curr_question:
+                        embed = Embed(title="Current Question for this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=7506394)
+                        await private_bot_feedback_channel.send(embed=embed)
+                        top_ten = upsert_to_trivia_leader_board(message.author.id, message.author.name, 10)
+                        embed = Embed(title="Current Top 10", description="In Descending Order", color=7506394)
+                        tag_names = [f"<@!{_row['id']}>" for _row in top_ten]
+                        scores = [str(_row['score']) for _row in top_ten]
+                        embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
+                        embed.add_field(name="Score", value="\n".join(scores), inline=True)
+                        await private_bot_feedback_channel.send(embed=embed)
+            else:
+                private_embed = embed = Embed(title="Current Question for this hour has already expired", description=f"<@!{message.author.id}> tried to answer an expired question.", color=16426522)
+                embed = Embed(title="Current Question for this hour has already expired", description=f"There was no winner. Try again in the next coming hour.", color=16426522)
                 result_remove_curr_question = remove_current_trivia(current_trivia_question_id)
                 if result_remove_curr_question:
-                    private_bot_feedback_channel = get(message.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
-                    embed = Embed(title="Current Question for this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=7506394)
-                    await private_bot_feedback_channel.send(embed=embed)
-                    top_ten = upsert_to_trivia_leader_board(message.author.id, message.author.name, 10)
-                    embed = Embed(title="Current Top 10", description="In Descending Order", color=7506394)
-                    tag_names = [f"<@!{_row['id']}>" for _row in top_ten]
-                    scores = [str(_row['score']) for _row in top_ten]
-                    embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
-                    embed.add_field(name="Score", value="\n".join(scores), inline=True)
-                    await private_bot_feedback_channel.send(embed=embed)
+                    await message.channel.send(embed=embed)
+                    await private_bot_feedback_channel.send(embed=private_embed)
+
 
 def get_trivia_leader_board():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
@@ -608,7 +618,10 @@ def get_current_trivia_question_id():
             select_st = select([curr_question_table])
             res = conn.execute(select_st)
             for _row in res:
-                return _row[1]
+                return {
+                    "question_id": _row[1],
+                    "time_asked": _row[2]
+                }
             return None
     except Exception as err:
         print(err)
@@ -619,8 +632,9 @@ def get_current_trivia_question_id():
 @client.command(pass_context=True, name="currquestion")
 @commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
 async def get_curr_question(ctx):
-    current_trivia_question_id = get_current_trivia_question_id()
-    if current_trivia_question_id:
+    current_trivia_question_obj = get_current_trivia_question_id()
+    if current_trivia_question_obj:
+        current_trivia_question_id = current_trivia_question_obj['question_id']
         curr_question = get_question_by_id(current_trivia_question_id)
         embed = Embed(title="It's Trivia Time!", description=f"{curr_question}", color=7506394)
         private_bot_feedback_channel = get(ctx.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
@@ -658,8 +672,17 @@ async def ask_a_question(ctx):
     all_questions = get_questions()
     trivia_channel = get(ctx.guild.text_channels, name=jiselConf['trivia_channel'])
     if trivia_channel:
+        current_trivia_question_obj = get_current_trivia_question_id()
+        if current_trivia_question_obj:
+            current_trivia_question_id = current_trivia_question_obj['question_id']
+            result_remove_curr_trivia = remove_current_trivia(current_trivia_question_id)
+            if result_remove_curr_trivia:
+                private_bot_feedback_channel = get(ctx.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+                embed = Embed(title="Previous Question Expired", description="A new question has been sent to the trivia channel", color=16426522)
+                await private_bot_feedback_channel.send(embed=embed)
+
         x = random.randint(0, len(all_questions)-1)
-        embed = Embed(title="It's Trivia Time!", description=f"{all_questions[x]['question']}", color=7506394)
+        embed = Embed(title="It's Trivia Time! You have 15 seconds to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=7506394)
         set_current_question(all_questions[x]['id'])
         await trivia_channel.send(embed=embed)
 

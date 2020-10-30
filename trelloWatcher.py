@@ -267,29 +267,48 @@ def get_question_by_id(question_id):
             select_st = select([questions_table]).where(questions_table.c.id == question_id)
             res = conn.execute(select_st)
             for row in res:
-                question = row[1]
-            return question
+                return {
+                    "question": row[1],
+                    "time_asked": row[2]
+                }
+            return None
     except Exception as err:
         print(err)
         if conn:
             conn.close()
         db.dispose()
 
+def remove_current_trivia(question_id):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            curr_question_table = Table('currentQuestion', metadata, autoload=True, autoload_with=conn)
+            delete_query = f"DELETE FROM pwm.\"currentQuestion\" WHERE question_id={question_id}"
+            res = conn.execute(delete_query)
+            return True
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
 
 async def ask_a_question():
     guild = client.get_guild(jiselConf['guild_id'])
     trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
     if trivia_channel:
         curr_question_id = get_current_trivia_question_id()
-        if not curr_question_id:
-            x = random.randint(0, len(trivia_questions)-1)
-            embed = Embed(title="It's Trivia Time!", description=f"{trivia_questions[x]['question']}", color=7506394)
-            set_current_question(trivia_questions[x]['id'])
-            await trivia_channel.send(embed=embed)
-        else:
-            curr_question = get_question_by_id(curr_question_id)
-            embed = Embed(title="It's Trivia Time!", description=f"{curr_question}", color=7506394)
-            await trivia_channel.send(embed=embed)
+        if curr_question_id:
+            result_remove_curr_trivia = remove_current_trivia(curr_question_id)
+            if result_remove_curr_trivia:
+                private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+                embed = Embed(title="Previous Question Expired", description="A new question has been sent to the trivia channel", color=16426522)
+                await private_bot_feedback_channel.send(embed=embed)
+        x = random.randint(0, len(trivia_questions)-1)
+        embed = Embed(title="It's Trivia Time!", description=f"{trivia_questions[x]['question']}", color=7506394)
+        set_current_question(trivia_questions[x]['id'])
+        await trivia_channel.send(embed=embed)
 
 def get_trivia_leader_board():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
