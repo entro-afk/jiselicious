@@ -306,7 +306,7 @@ async def ask_a_question():
                 embed = Embed(title="Previous Question Expired", description="A new question has been sent to the trivia channel", color=16426522)
                 await private_bot_feedback_channel.send(embed=embed)
         x = random.randint(0, len(trivia_questions)-1)
-        embed = Embed(title="It's Trivia Time!", description=f"{trivia_questions[x]['question']}", color=7506394)
+        embed = Embed(title="It's Trivia Time! You have 15 seconds to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
         set_current_question(trivia_questions[x]['id'])
         await trivia_channel.send(embed=embed)
 
