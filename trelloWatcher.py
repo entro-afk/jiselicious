@@ -22,6 +22,7 @@ import threading
 import dateutil.parser
 import pytz
 import random
+import redis
 client = commands.Bot(command_prefix='+')
 
 with open(r'jiselConf.yaml') as file:
@@ -43,12 +44,12 @@ scope = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
 
 credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog'], scope)  # Your json file here
-
+r = redis.Redis(host='localhost', port=6379, db=0)
 
 gc = gspread.authorize(credentials)
 
 random_minute = random.randint(0, 30)
-last_hour = 9
+
 def get_questions():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string)
@@ -77,18 +78,22 @@ trivia_questions = get_questions()
 @client.event
 async def on_ready():
     global random_minute
-    global last_hour
     print('Bot is ready.')
     while True:
         try:
             now = datetime.datetime.now()
             print('The random minute------', random_minute)
             if now.minute == random_minute:
+                last_hour = r.get('lasthour')
+                print(last_hour)
+                if last_hour:
+                    last_hour = int(last_hour)
                 if now.hour != last_hour:
+                    r.delete('lasthour')
                     print('Got random minute------', now.minute)
                     await ask_a_question()
                     random_minute = random.randint(0, 30)
-                    last_hour = now.hour
+                    r.set('lasthour', str(now.hour))
             await update_trello_cards_and_time()
             await asyncio.sleep(3.0)
         except Exception as err:
@@ -278,7 +283,7 @@ def get_question_by_id(question_id):
             conn.close()
         db.dispose()
 
-def remove_current_trivia(question_id):
+def remove_current_trivia():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
@@ -300,10 +305,10 @@ async def ask_a_question():
     if trivia_channel:
         curr_question_id = get_current_trivia_question_id()
         if curr_question_id:
-            result_remove_curr_trivia = remove_current_trivia(curr_question_id)
+            result_remove_curr_trivia = remove_current_trivia()
             if result_remove_curr_trivia:
                 private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
-                embed = Embed(title="Previous Question Expired", description="A new question has been sent to the trivia channel", color=16426522)
+                embed = Embed(title=f"Previous Question (ID#{curr_question_id}) Expired", description="A new question has been sent to the trivia channel", color=16426522)
                 await private_bot_feedback_channel.send(embed=embed)
         x = random.randint(0, len(trivia_questions)-1)
         embed = Embed(title="It's Trivia Time! You have 15 seconds to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
