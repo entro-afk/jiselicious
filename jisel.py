@@ -481,6 +481,7 @@ async def handle_trivia_message(message):
         if current_trivia_question_obj:
             private_bot_feedback_channel = get(message.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
             current_trivia_question_id = current_trivia_question_obj['question_id']
+            print(' what is 15 seconds plus---------', current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=15))
             if current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=15) > datetime.datetime.now():
                 answers = get_table_answers(current_trivia_question_id, None)
                 lower_case_answers = [answer_row['answer'].lower() for answer_row in answers]
@@ -518,7 +519,6 @@ def get_trivia_leader_board():
             leaderboard_table = Table('triviaLeaderboard', metadata, autoload=True, autoload_with=conn)
             select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc(), leaderboard_table.c.lastUpdated)
             res = conn.execute(select_st)
-            print('Does it even get the current question-------------')
             for _row in res:
                 participants.append({
                     'id': _row[0],
@@ -620,6 +620,7 @@ def get_current_trivia_question_id():
             curr_question_table = Table('currentQuestion', metadata, autoload=True, autoload_with=conn)
             select_st = select([curr_question_table])
             res = conn.execute(select_st)
+            print('Does it even get the current question-------------')
             for _row in res:
                 return {
                     "question_id": _row[1],
