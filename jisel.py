@@ -476,6 +476,7 @@ async def main(message):
 
 async def handle_trivia_message(message):
     if message.channel.name == jiselConf['trivia_channel']:
+        print('realized that this is the trivia channel------------')
         current_trivia_question_obj = get_current_trivia_question_id()
         if current_trivia_question_obj:
             private_bot_feedback_channel = get(message.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
