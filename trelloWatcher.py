@@ -47,8 +47,8 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog']
 r = redis.Redis(host='localhost', port=6379, db=0)
 
 gc = gspread.authorize(credentials)
-
-random_minute = random.randint(0, 30)
+curr_minute = datetime.datetime.now().minute
+random_minute = random.randint(curr_minute,curr_minute)
 
 def get_questions():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
@@ -75,6 +75,22 @@ def get_questions():
 
 trivia_questions = get_questions()
 
+def event_handler(msg):
+    print("Handler", msg)
+    try:
+        key = msg["data"].decode("utf-8")
+        # If shadowKey is there then it means we need to proceed or else just ignore it
+        if "shadowKey" in key:
+            # To get original key we are removing the shadowKey prefix
+            key = key.replace("shadowKey:", "")
+            value = r.get(key)
+            # Once we got to know the value we remove it from Redis and do whatever required
+            r.delete(key)
+            print("Got Value: ", value)
+    except Exception as exp:
+        pass
+
+
 @client.event
 async def on_ready():
     global random_minute
@@ -90,7 +106,8 @@ async def on_ready():
                     last_hour = int(last_hour)
                     print('The last hour integer------', last_hour)
                 if now.hour != last_hour:
-                    r.delete('lasthour')
+                    if last_hour:
+                        r.delete('lasthour')
                     print('Got random minute------', now.minute)
                     await ask_a_question()
                     random_minute = random.randint(0, 30)
@@ -199,6 +216,24 @@ async def update_trello_cards_and_time():
 
             try:
                 now = datetime.datetime.now()
+                guild = client.get_guild(jiselConf['guild_id'])
+                curr_question_has_not_expired = r.get('currtriviaexists')
+                if not curr_question_has_not_expired:
+                    curr_question_id = get_current_trivia_question_id()
+                    trivia_of_hour_msg_id = r.get('lastmessageid')
+                    trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
+                    if curr_question_id:
+                        result_remove_curr_trivia = remove_current_trivia()
+                        if result_remove_curr_trivia:
+                            private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+                            private_embed = Embed(title=f"Question of The Hour (ID#{curr_question_id}) has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
+                            embed = Embed(title="Current Question for this hour has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
+                            await private_bot_feedback_channel.send(embed=private_embed)
+                            await trivia_channel.send(embed=embed)
+                    if trivia_of_hour_msg_id:
+                        question_of_the_hour_message = await trivia_channel.fetch_message(int(trivia_of_hour_msg_id))
+                        await question_of_the_hour_message.delete()
+
                 if now.weekday() == 6 and now.hour == 23 and now.minute >= 31:
                     top_3 = get_trivia_leader_board()
                     if top_3:
@@ -210,7 +245,6 @@ async def update_trello_cards_and_time():
                             list_leader.append(row_leader)
                         stringified_top_3 = '\n'.join(list_leader)
                         embed = Embed(title="Weekly Leader Board", description=f"This week's Trivia Leaderboard:\n{stringified_top_3}\n\nCongratulations to <@!{top_3[0]['id']}>! 🎉 You've won this week's Trivia.\nA moderator will contact you privately with your prize.\n\n**Keep participating to find out who will be the next Trivia Master of the week!**", color=0x00ff00)
-                        guild = client.get_guild(jiselConf['guild_id'])
                         trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
                         await trivia_channel.send("", embed=embed)
                         clear_trivia_leaderboard()
@@ -304,17 +338,14 @@ async def ask_a_question():
     guild = client.get_guild(jiselConf['guild_id'])
     trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
     if trivia_channel:
-        curr_question_id = get_current_trivia_question_id()
-        if curr_question_id:
-            result_remove_curr_trivia = remove_current_trivia()
-            if result_remove_curr_trivia:
-                private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
-                embed = Embed(title=f"Previous Question (ID#{curr_question_id}) Expired", description="A new question has been sent to the trivia channel", color=16426522)
-                await private_bot_feedback_channel.send(embed=embed)
         x = random.randint(0, len(trivia_questions)-1)
-        embed = Embed(title="It's Trivia Time! You have 15 seconds to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
+        embed = Embed(title="It's Trivia Time! You have 30 seconds to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
         set_current_question(trivia_questions[x]['id'])
-        await trivia_channel.send(embed=embed)
+        curr_trivia_message = await trivia_channel.send(embed=embed)
+        r.set('currtriviaexists', str(curr_trivia_message.id))
+        r.set('lastmessageid', str(curr_trivia_message.id))
+        print('seting an expiration of 30 seconds-------------')
+        r.expire('currtriviaexists', jiselConf['expiration_seconds'])
 
 def get_trivia_leader_board():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
