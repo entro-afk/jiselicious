@@ -498,6 +498,7 @@ async def handle_trivia_message(message):
                         embed.add_field(name="Score", value="\n".join(scores), inline=True)
                         await private_bot_feedback_channel.send(embed=embed)
             else:
+                print('Does it even acknowlege that time has expired-------------')
                 private_embed = embed = Embed(title="Current Question for this hour has already expired", description=f"<@!{message.author.id}> tried to answer an expired question.", color=16426522)
                 embed = Embed(title="Current Question for this hour has already expired", description=f"There was no winner. Try again in the next coming hour.", color=16426522)
                 result_remove_curr_question = remove_current_trivia(current_trivia_question_id)
@@ -516,6 +517,7 @@ def get_trivia_leader_board():
             leaderboard_table = Table('triviaLeaderboard', metadata, autoload=True, autoload_with=conn)
             select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc(), leaderboard_table.c.lastUpdated)
             res = conn.execute(select_st)
+            print('Does it even get the current question-------------')
             for _row in res:
                 participants.append({
                     'id': _row[0],
