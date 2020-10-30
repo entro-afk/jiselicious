@@ -85,9 +85,10 @@ async def on_ready():
             print('The random minute------', random_minute)
             if now.minute == random_minute:
                 last_hour = r.get('lasthour')
-                print(last_hour)
+                print('The last hour------', last_hour)
                 if last_hour:
                     last_hour = int(last_hour)
+                    print('The last hour integer------', last_hour)
                 if now.hour != last_hour:
                     r.delete('lasthour')
                     print('Got random minute------', now.minute)
@@ -290,7 +291,7 @@ def remove_current_trivia():
     try:
         with db.connect() as conn:
             curr_question_table = Table('currentQuestion', metadata, autoload=True, autoload_with=conn)
-            delete_query = f"DELETE FROM pwm.\"currentQuestion\" WHERE question_id={question_id}"
+            delete_query = f"DELETE FROM pwm.\"currentQuestion\""
             res = conn.execute(delete_query)
             return True
     except Exception as err:
