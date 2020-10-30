@@ -342,12 +342,16 @@ async def ask_a_question():
     if trivia_channel:
         x = random.randint(0, len(trivia_questions)-1)
         embed = Embed(title="It's Trivia Time! You have 30 seconds to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
-        set_current_question(trivia_questions[x]['id'])
-        curr_trivia_message = await trivia_channel.send(embed=embed)
-        r.set('currtriviaexists', str(curr_trivia_message.id))
-        r.set('lastmessageid', str(curr_trivia_message.id))
-        print('seting an expiration of 30 seconds-------------')
-        r.expire('currtriviaexists', jiselConf['expiration_seconds'])
+        curr_question_id = get_current_trivia_question_id()
+        if curr_question_id:
+            result_remove_curr_trivia = remove_current_trivia()
+            if result_remove_curr_trivia:
+                set_current_question(trivia_questions[x]['id'])
+                curr_trivia_message = await trivia_channel.send(embed=embed)
+                r.set('currtriviaexists', str(curr_trivia_message.id))
+                r.set('lastmessageid', str(curr_trivia_message.id))
+                print('seting an expiration of 30 seconds-------------')
+                r.expire('currtriviaexists', jiselConf['expiration_seconds'])
 
 def get_trivia_leader_board():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
