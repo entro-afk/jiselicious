@@ -481,7 +481,7 @@ async def handle_trivia_message(message):
         if current_trivia_question_obj:
             private_bot_feedback_channel = get(message.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
             current_trivia_question_id = current_trivia_question_obj['question_id']
-            print(' what is 15 seconds plus---------', current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=15))
+            print(' what is 15 seconds plus---------', current_trivia_question_obj['time_asked'])
             if current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=15) > datetime.datetime.now():
                 answers = get_table_answers(current_trivia_question_id, None)
                 lower_case_answers = [answer_row['answer'].lower() for answer_row in answers]
