@@ -589,7 +589,7 @@ async def handle_trivia_message(message):
             current_trivia_question_id = current_trivia_question_obj['question_id']
             print(' what is 30 seconds plus---------', current_trivia_question_obj['time_asked'])
             now = datetime.datetime.now()
-            time_expire = current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=15)
+            time_expire = current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=jiselConf['expiration_seconds'])
             print(time_expire)
             print(now)
             if now <= time_expire:
