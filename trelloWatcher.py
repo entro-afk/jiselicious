@@ -253,7 +253,7 @@ async def update_trello_cards_and_time():
                         private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
                         embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
                         await private_bot_feedback_channel.send(embed=embed)
-                if now.minute % 15 == 0:
+                if now.minute % 5 == 0:
                     channel_time_table = Table('timeChannels', metadata, autoload=True, autoload_with=conn)
                     select_st = select([channel_time_table])
                     res = conn.execute(select_st)
