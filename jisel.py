@@ -24,8 +24,11 @@ from remoteGoogImage import detect_text_uri
 import pytz
 import math
 import random
+import redis
+
 client = commands.Bot(command_prefix='+')
 
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 with open(r'jiselConf.yaml') as file:
     # The FullLoader parameter handles the conversion from YAML
@@ -391,40 +394,143 @@ async def handle_bug_report(message):
         df = pd.DataFrame(data, columns=headers)
         print(df.head())
         # NO.   Submitter/Server        BUG details     Resolution      Screenshot
-        if message.clean_content.lower().startswith("NO.".lower()):
-            split_text = message.clean_content.rstrip("\n\r").split("\n")
-            bug_number = re.sub("NO.|NO|No.|No", '', split_text[0]).strip()
-            bug_submitter = re.sub("Submitter/Server:", '', split_text[1]).strip()
-            bug_details = re.sub("BUG details:", '', split_text[2]).strip()
-            try:
-                screenshot = re.sub("Screenshot:|Screenshot", '', split_text[3]).strip()
-            except IndexError:
-                screenshot = ""
-            bug_resolution = ""
-            row = [bug_number, bug_submitter, bug_details, bug_resolution]
-            if "gyazo" in screenshot:
-                if screenshot.startswith("https://gyazo.com/"):
-                    image_url = gyazo_client.get_image(re.sub(f'https://gyazo.com/', '', screenshot)).url
-                    file_ext = image_url.split(".")[-1]
-                    row.append(f"=IMAGE(\"{re.sub(file_ext, file_ext.upper(), image_url)}\")")
-                    wks.insert_row(row, df.shape[0] + 2, value_input_option='USER_ENTERED')
+        is_open = redis_client.get(f'{message.author.id}_bug_session_open')
+        if is_open:
+            await handle_open_bug_report(message)
+
+        else:
+            if message.clean_content.lower().startswith("NO.".lower()):
+                split_text = message.clean_content.rstrip("\n\r").split("\n")
+                bug_number = re.sub("NO.|NO|No.|No", '', split_text[0]).strip()
+                bug_submitter = re.sub("Submitter/Server:", '', split_text[1]).strip()
+                bug_details = re.sub("BUG details:", '', split_text[2]).strip()
+                try:
+                    screenshot = re.sub("Screenshot:|Screenshot", '', split_text[3]).strip()
+                except IndexError:
+                    screenshot = ""
+                bug_resolution = ""
+                row = [bug_number, bug_submitter, bug_details, bug_resolution]
+                if "gyazo" in screenshot:
+                    if screenshot.startswith("https://gyazo.com/"):
+                        image_url = gyazo_client.get_image(re.sub(f'https://gyazo.com/', '', screenshot)).url
+                        file_ext = image_url.split(".")[-1]
+                        row.append(f"=IMAGE(\"{re.sub(file_ext, file_ext.upper(), image_url)}\")")
+                        wks.insert_row(row, df.shape[0] + 2, value_input_option='USER_ENTERED')
+                elif message.attachments:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(message.attachments[0].url) as r:
+                            if r.status == 200:
+                                result = await r.read()
+                                row.append(f"=IMAGE(\"{message.attachments[0].url}\")")
+                                wks.insert_row(row, df.shape[0] + 2, value_input_option='USER_ENTERED')
+                else:
+                    row.append(screenshot)
+                    wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
             elif message.attachments:
                 async with aiohttp.ClientSession() as session:
                     async with session.get(message.attachments[0].url) as r:
                         if r.status == 200:
                             result = await r.read()
-                            row.append(f"=IMAGE(\"{message.attachments[0].url}\")")
-                            wks.insert_row(row, df.shape[0] + 2, value_input_option='USER_ENTERED')
-            else:
-                row.append(screenshot)
-                wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
-        elif message.attachments:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(message.attachments[0].url) as r:
-                    if r.status == 200:
-                        result = await r.read()
-                        row = ["Continuation", "", "", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
-                        wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
+                            row = ["Continuation", "", "", "", f"=IMAGE(\"{message.attachments[0].url}\")"]
+                            wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
+
+async def handle_open_bug_report(message):
+    bug_id_sent = redis_client.get(f"{message.author.id}_bug_id_sent")
+    bug_submitter_and_server_sent = redis_client.get(f"{message.author.id}_bug_submitter_and_server_sent")
+    bug_details_sent = redis_client.get(f"{message.author.id}_bug_details_sent")
+    bug_screenshot_sent = redis_client.get(f"{message.author.id}_bug_screenshot_sent")
+    bug_done_screenshots = redis_client.get(f"{message.author.id}_bug_done_screenshots")
+    bug_report_ready_to_preview = redis_client.get(f"{message.author.id}_bug_report_ready_to_preview")
+    questionnaire_embed = None
+    bug_report_preview_id = redis_client.get(f'{message.author.id}_bug_report_preview_id')
+    bug_report_preview_msg = await message.channel.fetch_message(int(bug_report_preview_id))
+    preview_embed = bug_report_preview_msg.embeds[0]
+    previous_question_id = redis_client.get(f'{message.author.id}_bug_report_previous_question_id')
+    previous_question = await message.channel.fetch_message(int(previous_question_id))
+    async def handle_screenshots():
+        bug_screenshot_sent = redis_client.get(f"{message.author.id}_bug_screenshot_sent")
+        if not bug_screenshot_sent:
+            atchments = []
+            for _a in message.attachments:
+                atchments.append(_a.url)
+            redis_client.set(f"{message.author.id}_bug_screenshot_sent", message.content + ',' + ",".join(atchments))
+        else:
+            atchments = []
+            for _a in message.attachments:
+                atchments.append(_a.url)
+            redis_client.set(f"{message.author.id}_bug_screenshot_sent", message.content + ',' + bug_screenshot_sent.decode("utf-8") + "," + ",".join(atchments))
+        bug_screenshot_sent = redis_client.get(f"{message.author.id}_bug_screenshot_sent").decode("utf-8").split(',')
+        preview_embed.set_field_at(3, name="Bug Screenshot(s) or Videos", value="\n".join(bug_screenshot_sent) or "None provided")
+        await bug_report_preview_msg.edit(embed=preview_embed)
+
+    if message.content.lower() == 'cancel':
+        await bug_report_preview_msg.delete()
+        await previous_question.delete()
+        for key in redis_client.scan_iter(f'{message.author.id}_bug_*'):
+            redis_client.delete(key)
+    elif not bug_id_sent:
+        redis_client.set(f"{message.author.id}_bug_id_sent", message.clean_content)
+        preview_embed.set_field_at(0, name="Bug ID", value=message.clean_content)
+        await bug_report_preview_msg.edit(embed=preview_embed)
+        questionnaire_embed = Embed(title="Who is the submitter and in what server was this bug found?", color=jiselConf['info_color'])
+    elif not bug_submitter_and_server_sent:
+        redis_client.set(f"{message.author.id}_bug_submitter_and_server_sent", message.clean_content)
+        preview_embed.set_field_at(1, name="Bug Submitter/Server", value=message.clean_content)
+        await bug_report_preview_msg.edit(embed=preview_embed)
+        questionnaire_embed = Embed(title="Please provide concise details for this bug", color=jiselConf['info_color'])
+    elif not bug_details_sent:
+        redis_client.set(f"{message.author.id}_bug_details_sent", message.clean_content)
+        preview_embed.set_field_at(2, name="Bug Details", value=message.clean_content)
+        await bug_report_preview_msg.edit(embed=preview_embed)
+        questionnaire_embed = Embed(title="Please provide screenshots of your bug.  A Link to a video would be ideal", color=jiselConf['info_color'])
+    elif not bug_done_screenshots:
+        await handle_screenshots()
+        questionnaire_embed = Embed(title="Are you done posting attachments? If not, keep attaching all the screenshots you need. If you're ready, just tap on the <:Yes:771864479461539840>", color=jiselConf['info_color'])
+        questionnaire_embed.add_field(name="<:Yes:771864479461539840>", value="I'm ready to send my report")
+        questionnaire_embed.add_field(name="<:No:771864718939652144>", value="I'm not ready. I'm going to make more attachments")
+
+    if message.attachments and not bug_details_sent:
+        await handle_screenshots()
+
+    if questionnaire_embed:
+        questionnaire_embed.set_footer(text='You can type "cancel" at any time to exit this bug report session. Your incomplete bug report will not be recorded')
+        questionnaire_message = await message.channel.send(embed=questionnaire_embed)
+        await previous_question.delete()
+        if not message.attachments and not message.embeds:
+            await message.delete()
+        redis_client.set(f'{message.author.id}_bug_report_previous_question_id', questionnaire_message.id)
+        if bug_details_sent:
+            await questionnaire_message.add_reaction(':Yes:771864479461539840')
+            await questionnaire_message.add_reaction(':No:771864718939652144')
+
+
+@client.command(pass_context=True, name='report')
+async def start_report_questionaire(ctx):
+    if ctx.message.channel.type == ChannelType.text and ctx.message.channel.name in ["bug-report"]:
+        if ctx.message.guild.id == jiselConf['snk_guild_id']:
+            wks = gc.open("SNK bug report chart").worksheet("Sheet1")
+        else:
+            wks = gc.open("PWM bug report chart").worksheet("Hoja 1")
+
+        data = wks.get_all_values()
+        headers = data[0]
+
+        df = pd.DataFrame(data, columns=headers)
+        print(df.head())
+        # NO.   Submitter/Server        BUG details     Resolution      Screenshot
+        embed = Embed(title="Bug Report - Not Yet Recorded", description="This is a preview of your current bug report.  It has not yet been recorded.", color=jiselConf['info_color'])
+        embed.add_field(name="Bug ID", value="<:No:771864718939652144>")
+        embed.add_field(name="Bug Submitter/Server", value="<:No:771864718939652144>")
+        embed.add_field(name="Bug Details", value="<:No:771864718939652144>")
+        embed.add_field(name="Bug Screenshot", value="<:No:771864718939652144>")
+        bug_report_preview_msg = await ctx.message.channel.send(embed=embed)
+        redis_client.set(f'{ctx.author.id}_bug_session_open', 1)
+        redis_client.set(f'{ctx.author.id}_bug_report_preview_id', bug_report_preview_msg.id)
+        questionnaire_embed = Embed(title="What is the ID number of this current bug you are reporting?", color=jiselConf['info_color'])
+        questionnaire_embed.set_footer(text='You can type "cancel" at any time to exit this bug report session. Your incomplete bug report will not be recorded')
+        questionnaire_msg = await ctx.message.channel.send(embed=questionnaire_embed)
+        redis_client.set(f'{ctx.author.id}_bug_report_previous_question_id', questionnaire_msg.id)
+
 
 
 async def check_if_valid_navi_message(message):
@@ -495,10 +601,10 @@ async def handle_trivia_message(message):
                     await message.channel.send(embed=embed)
                     result_remove_curr_question = remove_current_trivia()
                     if result_remove_curr_question:
-                        embed = Embed(title="Current Question for this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=7506394)
+                        embed = Embed(title="Current Question for this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=jiselConf['info_color'])
                         await private_bot_feedback_channel.send(embed=embed)
                         top_ten = upsert_to_trivia_leader_board(message.author.id, message.author.name, 10)
-                        embed = Embed(title="Current Top 10", description="In Descending Order", color=7506394)
+                        embed = Embed(title="Current Top 10", description="In Descending Order", color=jiselConf['info_color'])
                         tag_names = [f"<@!{_row['id']}>" for _row in top_ten]
                         scores = [str(_row['score']) for _row in top_ten]
                         embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
@@ -541,7 +647,7 @@ def get_trivia_leader_board():
 @commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
 async def get_leaderboard(ctx):
     participants = get_trivia_leader_board()
-    embed = Embed(title="Current Top 10", description="In Descending Order", color=7506394)
+    embed = Embed(title="Current Top 10", description="In Descending Order", color=jiselConf['info_color'])
     if participants:
         tag_names = [f"<@!{_row['id']}>" for _row in participants]
         scores = [str(_row['score']) for _row in participants]
@@ -645,12 +751,12 @@ async def get_curr_question(ctx):
     if current_trivia_question_obj:
         current_trivia_question_id = current_trivia_question_obj['question_id']
         curr_question = get_question_by_id(current_trivia_question_id)
-        embed = Embed(title="It's Trivia Time!", description=f"{curr_question}", color=7506394)
+        embed = Embed(title="It's Trivia Time!", description=f"{curr_question}", color=jiselConf['info_color'])
         private_bot_feedback_channel = get(ctx.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
         await private_bot_feedback_channel.send(embed=embed)
 
     else:
-        embed = Embed(title="No Current Question at the moment", description="There is no current question at the moment. Check back later", color=7506394)
+        embed = Embed(title="No Current Question at the moment", description="There is no current question at the moment. Check back later", color=jiselConf['info_color'])
         await ctx.message.channel.send(embed=embed)
 
 @client.event
@@ -691,7 +797,7 @@ async def ask_a_question(ctx):
                 await private_bot_feedback_channel.send(embed=embed)
 
         x = random.randint(0, len(all_questions)-1)
-        embed = Embed(title="It's Trivia Time! You have 30 seconds to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=7506394)
+        embed = Embed(title="It's Trivia Time! You have 30 seconds to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=jiselConf['info_color'])
         set_current_question(all_questions[x]['id'])
         await trivia_channel.send(embed=embed)
 
@@ -713,6 +819,64 @@ async def on_raw_reaction_add(payload):
 
 
         print(payload)
+    if payload.member.id != client.user.id and message.channel.type == ChannelType.text and message.channel.name in ["bug-report"]:
+        previous_question_id = redis_client.get(f'{payload.member.id}_bug_report_previous_question_id')
+        if previous_question_id:
+            previous_question = await message.channel.fetch_message(int(previous_question_id))
+            if payload.message_id == previous_question.id:
+                if payload.emoji.name == 'Yes' or payload.emoji.id == int(jiselConf['fancy_yes_emoji'].split(':')[1]):
+                    bug_report_preview_id = redis_client.get(f'{payload.member.id}_bug_report_preview_id')
+                    bug_report_preview_msg = await message.channel.fetch_message(int(bug_report_preview_id))
+                    preview_embed = bug_report_preview_msg.embeds[0]
+                    preview_embed.title = "Bug Report - Successfully Recorded"
+                    preview_embed.description = "This bug report was successfully recorded."
+                    await send_to_google_sheet(bug_report_preview_msg)
+                    await bug_report_preview_msg.edit(embed=preview_embed)
+                    await message.delete()
+                    await emoji_success_feedback(bug_report_preview_msg)
+                    for key in redis_client.scan_iter(f'{payload.member.id}_bug_*'):
+                        redis_client.delete(key)
+                elif payload.emoji.name == 'No':
+                    questionnaire_embed = Embed(title="You really don't have to tap on <:No:771864718939652144> to upload more attachments", description="Just keep uploading your screenshots until you're ready to hit <:Yes:771864479461539840>", color=jiselConf['info_color'])
+                    questionnaire_embed.set_footer(text='You can type "cancel" at any time to exit this bug report session. Your incomplete bug report will not be recorded')
+                    questionnaire_message = await message.channel.send(embed=questionnaire_embed)
+                    await previous_question.delete()
+                    redis_client.set(f'{payload.member.id}_bug_report_previous_question_id', questionnaire_message.id)
+                    await questionnaire_message.add_reaction(':Yes:771864479461539840')
+                    await questionnaire_message.add_reaction(':No:771864718939652144')
+
+
+async def send_to_google_sheet(message):
+    bug_report_embed = message.embeds[0]
+    if message.channel.type == ChannelType.text and message.channel.name in ["bug-report"]:
+        if message.guild.id == jiselConf['snk_guild_id']:
+            wks = gc.open("SNK bug report chart").worksheet("Sheet1")
+        else:
+            wks = gc.open("PWM bug report chart").worksheet("Hoja 1")
+
+        data = wks.get_all_values()
+        headers = data[0]
+
+        df = pd.DataFrame(data, columns=headers)
+        print(df.head())
+        # NO.   Submitter/Server        BUG details     Resolution      Screenshot
+        bug_number = re.sub("NO.|NO|No.|No", '', bug_report_embed.fields[0].value).strip()
+        bug_submitter = re.sub("Submitter/Server:", '', bug_report_embed.fields[1].value).strip()
+        bug_details = re.sub("BUG details:", '', bug_report_embed.fields[2].value).strip()
+        try:
+            screenshots = re.sub("Screenshot:|Screenshot", '', bug_report_embed.fields[3].value).strip().split("\n")
+        except IndexError:
+            screenshots = ""
+        bug_resolution = ""
+        row = [bug_number, bug_submitter, bug_details, bug_resolution]
+        if screenshots:
+            row.append(f"=IMAGE(\"{screenshots[0].strip()}\")")
+        wks.insert_row(row, df.shape[0] + 1, value_input_option='USER_ENTERED')
+        if len(screenshots) > 1:
+            for index, screenshot in enumerate(screenshots[1:]):
+                row = ["Continuation", "", "", ""]
+                row.append(f"=IMAGE(\"{screenshot.strip()}\")")
+                wks.insert_row(row, df.shape[0] + 2 + index, value_input_option='USER_ENTERED')
 
 
 def extract_event_number(message):
