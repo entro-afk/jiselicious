@@ -1065,7 +1065,7 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
                         else:
                             new_card_needed = False
                     if new_card_needed:
-                        new_card = ec_logs.add_card(hasattr(message.author, 'nick') and message.author.nick or message.author.name, message.clean_content)
+                        new_card = ec_logs.add_card(message.author.name, message.clean_content)
                         new_card.change_pos("bottom")
                         codes_sent = "Codes:\n" + "       ".join(codes_used)
                         hoster_server = get_server(message.author.id)
