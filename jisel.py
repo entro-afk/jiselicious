@@ -797,7 +797,7 @@ async def ask_a_question(ctx):
                 await private_bot_feedback_channel.send(embed=embed)
 
         x = random.randint(0, len(all_questions)-1)
-        embed = Embed(title="It's Trivia Time! You have 30 seconds to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=jiselConf['info_color'])
+        embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds'])} seconds to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=jiselConf['info_color'])
         set_current_question(all_questions[x]['id'])
         await trivia_channel.send(embed=embed)
 
