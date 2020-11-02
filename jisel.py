@@ -701,8 +701,8 @@ def upsert_to_trivia_leader_board(discord_id, discord_name, score):
             all_time = Table('allTimeTriviaLeaderboard', metadata, autoload=True, autoload_with=conn)
             update_or_insert_charge_query = f"INSERT INTO pwm.\"triviaLeaderboard\" (\"discord_id\", \"discord_name\", \"score\") VALUES ({discord_id}, \'{discord_name}\', {score}) ON CONFLICT (\"discord_id\") DO UPDATE SET \"score\" = \"triviaLeaderboard\".\"score\" + {score}, \"lastUpdated\" = CURRENT_TIMESTAMP"
             all_time_upsert_query = f"INSERT INTO pwm.\"allTimeTriviaLeaderboard\" (\"discord_id\", \"discord_name\", \"score\") VALUES ({discord_id}, \'{discord_name}\', {score}) ON CONFLICT (\"discord_id\") DO UPDATE SET \"score\" = \"allTimeTriviaLeaderboard\".\"score\" + {score}, \"lastUpdated\" = CURRENT_TIMESTAMP"
+            all_time_result = conn.execute(all_time_upsert_query)
             result = conn.execute(update_or_insert_charge_query)
-            all_time_result = conn.execute(update_or_insert_charge_query)
             select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc(), leaderboard_table.c.lastUpdated)
             res = conn.execute(select_st)
             for _row in res:
