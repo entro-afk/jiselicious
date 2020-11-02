@@ -195,9 +195,13 @@ async def update_trello_cards_and_time():
                 await ask_a_question()
                 random_minute = random.randint(0, 30)
                 r.set('lasthour', str(now.hour))
-        if now.minute % 5 == 0:
+        last_interval_update = r.get('last5MinuteUpdate')
+        if last_interval_update:
+            last_interval_update = int(last_interval_update)
+        if now.minute % 5 == 0 and now.minute != last_interval_update:
             print('started updating time-------------', datetime.datetime.now().time())
             await update_time()
+            r.set('last5MinuteUpdate', now.minute)
             print('finished updating times---------------', datetime.datetime.now().time())
     except Exception as err:
         print(err)
