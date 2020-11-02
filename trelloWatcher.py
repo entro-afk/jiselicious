@@ -94,25 +94,9 @@ def event_handler(msg):
 
 @client.event
 async def on_ready():
-    global random_minute
     print('Bot is ready.')
     while True:
         try:
-            now = datetime.datetime.now()
-            print('The random minute------', random_minute)
-            if now.minute >= random_minute:
-                last_hour = r.get('lasthour')
-                print('The last hour------', last_hour)
-                if last_hour:
-                    last_hour = int(last_hour)
-                    print('The last hour integer------', last_hour)
-                if now.hour != last_hour:
-                    if last_hour:
-                        r.delete('lasthour')
-                    print('Got random minute------', now.minute)
-                    await ask_a_question()
-                    random_minute = random.randint(0, 30)
-                    r.set('lasthour', str(now.hour))
             await update_trello_cards_and_time()
             await asyncio.sleep(3.0)
         except Exception as err:
@@ -154,6 +138,7 @@ def append_random_codes(card, number_of_codes):
     card.set_description(card.description + f"\n{codes_sent}")
 async def update_trello_cards_and_time():
     global has_asked_a_question
+    global random_minute
 
 
 
@@ -196,8 +181,24 @@ async def update_trello_cards_and_time():
                 private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
                 embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
                 await private_bot_feedback_channel.send(embed=embed)
+        if now.minute >= random_minute:
+            print('The random minute------', random_minute)
+            last_hour = r.get('lasthour')
+            print('The last hour------', last_hour)
+            if last_hour:
+                last_hour = int(last_hour)
+                print('The last hour integer------', last_hour)
+            if now.hour != last_hour:
+                if last_hour:
+                    r.delete('lasthour')
+                print('Got random minute------', now.minute)
+                await ask_a_question()
+                random_minute = random.randint(0, 30)
+                r.set('lasthour', str(now.hour))
         if now.minute % 5 == 0:
+            print('started updating time-------------', datetime.datetime.now().time())
             await update_time()
+            print('finished updating times---------------', datetime.datetime.now().time())
     except Exception as err:
         print(err)
 
