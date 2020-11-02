@@ -153,82 +153,91 @@ def append_random_codes(card, number_of_codes):
     card.set_description(card.description + f"\n{codes_sent}")
 async def update_trello_cards_and_time():
     global has_asked_a_question
+
+
+
+    try:
+        now = datetime.datetime.now()
+        guild = client.get_guild(jiselConf['guild_id'])
+        curr_question_has_not_expired = r.get('currtriviaexists')
+        if not curr_question_has_not_expired:
+            curr_question_id = get_current_trivia_question_id()
+            trivia_of_hour_msg_id = r.get('lastmessageid')
+            trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
+            if curr_question_id:
+                result_remove_curr_trivia = remove_current_trivia()
+                if result_remove_curr_trivia:
+                    private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+                    private_embed = Embed(title=f"Question of The Hour (ID#{curr_question_id}) has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
+                    embed = Embed(title="Current Question for this hour has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
+                    await private_bot_feedback_channel.send(embed=private_embed)
+                    await trivia_channel.send(embed=embed)
+            if trivia_of_hour_msg_id:
+                question_of_the_hour_message = await trivia_channel.fetch_message(int(trivia_of_hour_msg_id))
+                if question_of_the_hour_message:
+                    await question_of_the_hour_message.delete()
+                    r.delete('lastmessageid')
+
+        if now.weekday() == 6 and now.hour == 23 and now.minute >= 31:
+            top_3 = get_trivia_leader_board()
+            if top_3:
+                list_leader = []
+                i=1
+                for leader in top_3:
+                    row_leader = f"\n{i if i >1 else '🏆'} - <@!{leader['id']}> ({leader['score']} points)"
+                    i += 1
+                    list_leader.append(row_leader)
+                stringified_top_3 = '\n'.join(list_leader)
+                embed = Embed(title="Weekly Leader Board", description=f"This week's Trivia Leaderboard:\n{stringified_top_3}\n\nCongratulations to <@!{top_3[0]['id']}>! 🎉 You've won this week's Trivia.\nA moderator will contact you privately with your prize.\n\n**Keep participating to find out who will be the next Trivia Master of the week!**", color=0x00ff00)
+                trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
+                await trivia_channel.send("", embed=embed)
+                clear_trivia_leaderboard()
+                private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+                embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
+                await private_bot_feedback_channel.send(embed=embed)
+        if now.minute % 5 == 0:
+            await update_time()
+    except Exception as err:
+        print(err)
+
+
+
+async def update_time():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
 
     try:
         with db.connect() as conn:
+            channel_time_table = Table('timeChannels', metadata, autoload=True, autoload_with=conn)
+            select_st = select([channel_time_table])
+            res = conn.execute(select_st)
 
-            try:
-                now = datetime.datetime.now()
-                guild = client.get_guild(jiselConf['guild_id'])
-                curr_question_has_not_expired = r.get('currtriviaexists')
-                if not curr_question_has_not_expired:
-                    curr_question_id = get_current_trivia_question_id()
-                    trivia_of_hour_msg_id = r.get('lastmessageid')
-                    trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
-                    if curr_question_id:
-                        result_remove_curr_trivia = remove_current_trivia()
-                        if result_remove_curr_trivia:
-                            private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
-                            private_embed = Embed(title=f"Question of The Hour (ID#{curr_question_id}) has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
-                            embed = Embed(title="Current Question for this hour has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
-                            await private_bot_feedback_channel.send(embed=private_embed)
-                            await trivia_channel.send(embed=embed)
-                    if trivia_of_hour_msg_id:
-                        question_of_the_hour_message = await trivia_channel.fetch_message(int(trivia_of_hour_msg_id))
-                        if question_of_the_hour_message:
-                            await question_of_the_hour_message.delete()
-                            r.delete('lastmessageid')
-
-                if now.weekday() == 6 and now.hour == 23 and now.minute >= 31:
-                    top_3 = get_trivia_leader_board()
-                    if top_3:
-                        list_leader = []
-                        i=1
-                        for leader in top_3:
-                            row_leader = f"\n{i if i >1 else '🏆'} - <@!{leader['id']}> ({leader['score']} points)"
-                            i += 1
-                            list_leader.append(row_leader)
-                        stringified_top_3 = '\n'.join(list_leader)
-                        embed = Embed(title="Weekly Leader Board", description=f"This week's Trivia Leaderboard:\n{stringified_top_3}\n\nCongratulations to <@!{top_3[0]['id']}>! 🎉 You've won this week's Trivia.\nA moderator will contact you privately with your prize.\n\n**Keep participating to find out who will be the next Trivia Master of the week!**", color=0x00ff00)
-                        trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
-                        await trivia_channel.send("", embed=embed)
-                        clear_trivia_leaderboard()
-                        private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
-                        embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
-                        await private_bot_feedback_channel.send(embed=embed)
-                if now.minute % 5 == 0:
-                    channel_time_table = Table('timeChannels', metadata, autoload=True, autoload_with=conn)
-                    select_st = select([channel_time_table])
-                    res = conn.execute(select_st)
-                    for _row in res:
-                        former_name = _row[0]
-                        now_time = datetime.datetime.today().now(pytz.timezone(_row[3])).strftime('%H:%M')
-                        if _row[0] != f"⌚ {_row[1]}: {now_time}":
-                            update_statement = channel_time_table.update().values(
-                                channelName=f"⌚ {_row[1]}: {now_time}").where(
-                                and_(
-                                    channel_time_table.c.channelName != f"⌚ {_row[1]}: {now_time}",
-                                    channel_time_table.c.channelID == _row[2]
-                                )
-                            )
-                            res = conn.execute(update_statement)
-                            await client.wait_until_ready()
-                            guild = client.get_guild(_row[5])
-                            if guild:
-                                channel = get(guild.voice_channels, id=int(_row[2]))
-                                if channel:
-                                    await channel.edit(name=f"⌚ {_row[1]}: {now_time}")
-            except Exception as err:
-                print(err)
-
+            for _row in res:
+                former_name = _row[0]
+                now_time = datetime.datetime.today().now(pytz.timezone(_row[3])).strftime('%H:%M')
+                if _row[0] != f"⌚ {_row[1]}: {now_time}":
+                    update_statement = channel_time_table.update().values(
+                        channelName=f"⌚ {_row[1]}: {now_time}").where(
+                        and_(
+                            channel_time_table.c.channelName != f"⌚ {_row[1]}: {now_time}",
+                            channel_time_table.c.channelID == _row[2]
+                        )
+                    )
+                    res = conn.execute(update_statement)
+                    await client.wait_until_ready()
+                    guild = client.get_guild(_row[5])
+                    if guild:
+                        channel = get(guild.voice_channels, id=int(_row[2]))
+                        if channel:
+                            await channel.edit(name=f"⌚ {_row[1]}: {now_time}")
     except Exception as err:
         print(err)
         if conn:
             conn.close()
         db.dispose()
+
+
 
 def set_current_question(question_id):
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
