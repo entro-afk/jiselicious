@@ -296,18 +296,20 @@ def remove_current_trivia():
 async def ask_a_question():
     guild = client.get_guild(jiselConf['guild_id'])
     trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
+    print('asking a question-------------', datetime.datetime.now().time())
     if trivia_channel:
         x = random.randint(0, len(trivia_questions)-1)
         embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds']) if jiselConf['expiration_seconds'] < 100 else str(math.floor(jiselConf['expiration_seconds']/60))} {'seconds' if jiselConf['expiration_seconds'] < 100 else 'minutes'} to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
         curr_question_has_not_expired = r.get('currtriviaexists')
         if not curr_question_has_not_expired:
+            print('question has expired so clearing curr question table-------------', datetime.datetime.now().time())
             result_remove_curr_trivia = remove_current_trivia()
             if result_remove_curr_trivia:
                 set_current_question(trivia_questions[x]['id'])
                 curr_trivia_message = await trivia_channel.send(embed=embed)
                 r.set('currtriviaexists', str(curr_trivia_message.id))
                 r.set('lastmessageid', str(curr_trivia_message.id))
-                print('seting an expiration of 30 seconds-------------')
+                print('setting an expiration after asking a question-------------', datetime.datetime.now().time())
                 r.expire('currtriviaexists', jiselConf['expiration_seconds'])
 
 def get_trivia_leader_board():
