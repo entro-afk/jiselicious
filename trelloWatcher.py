@@ -100,7 +100,7 @@ async def on_ready():
         try:
             now = datetime.datetime.now()
             print('The random minute------', random_minute)
-            if now.minute == random_minute:
+            if now.minute >= random_minute:
                 last_hour = r.get('lasthour')
                 print('The last hour------', last_hour)
                 if last_hour:
@@ -196,7 +196,7 @@ async def update_trello_cards_and_time():
                 private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
                 embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
                 await private_bot_feedback_channel.send(embed=embed)
-        if now.minute % 10 == 0:
+        if now.minute % 5 == 0:
             await update_time()
     except Exception as err:
         print(err)
