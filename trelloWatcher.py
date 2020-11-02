@@ -23,6 +23,7 @@ import dateutil.parser
 import pytz
 import random
 import redis
+import math
 client = commands.Bot(command_prefix='+')
 
 with open(r'jiselConf.yaml') as file:
@@ -296,7 +297,7 @@ async def ask_a_question():
     trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
     if trivia_channel:
         x = random.randint(0, len(trivia_questions)-1)
-        embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds'])} seconds to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
+        embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds']) if jiselConf['expiration_seconds'] < 100 else str(math.floor(jiselConf['expiration_seconds']/60))} {'seconds' if jiselConf['expiration_seconds'] < 100 else 'minutes'} to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
         curr_question_has_not_expired = r.get('currtriviaexists')
         if not curr_question_has_not_expired:
             result_remove_curr_trivia = remove_current_trivia()

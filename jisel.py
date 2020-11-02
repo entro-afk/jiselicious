@@ -655,6 +655,40 @@ async def get_leaderboard(ctx):
         embed.add_field(name="Score", value="\n".join(scores), inline=True)
         await ctx.message.channel.send(embed=embed)
 
+@client.command(pass_context=True, name="alltime")
+@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+async def get_leaderboard(ctx):
+    participants = get_all_time()
+    embed = Embed(title="Current Top 10", description="In Descending Order", color=jiselConf['info_color'])
+    if participants:
+        tag_names = [f"<@!{_row['id']}>" for _row in participants]
+        scores = [str(_row['score']) for _row in participants]
+        embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
+        embed.add_field(name="Score", value="\n".join(scores), inline=True)
+        await ctx.message.channel.send(embed=embed)
+
+def get_all_time():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            participants = []
+            leaderboard_table = Table('allTimeTriviaLeaderboard', metadata, autoload=True, autoload_with=conn)
+            select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc(), leaderboard_table.c.lastUpdated)
+            res = conn.execute(select_st)
+            for _row in res:
+                participants.append({
+                    'id': _row[0],
+                    'name': _row[1],
+                    'score': _row[2]
+                })
+            return participants
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
 
 def upsert_to_trivia_leader_board(discord_id, discord_name, score):
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
@@ -664,8 +698,11 @@ def upsert_to_trivia_leader_board(discord_id, discord_name, score):
         with db.connect() as conn:
             participants = []
             leaderboard_table = Table('triviaLeaderboard', metadata, autoload=True, autoload_with=conn)
+            all_time = Table('allTimeTriviaLeaderboard', metadata, autoload=True, autoload_with=conn)
             update_or_insert_charge_query = f"INSERT INTO pwm.\"triviaLeaderboard\" (\"discord_id\", \"discord_name\", \"score\") VALUES ({discord_id}, \'{discord_name}\', {score}) ON CONFLICT (\"discord_id\") DO UPDATE SET \"score\" = \"triviaLeaderboard\".\"score\" + {score}, \"lastUpdated\" = CURRENT_TIMESTAMP"
+            all_time_upsert_query = f"INSERT INTO pwm.\"allTimeTriviaLeaderboard\" (\"discord_id\", \"discord_name\", \"score\") VALUES ({discord_id}, \'{discord_name}\', {score}) ON CONFLICT (\"discord_id\") DO UPDATE SET \"score\" = \"allTimeTriviaLeaderboard\".\"score\" + {score}, \"lastUpdated\" = CURRENT_TIMESTAMP"
             result = conn.execute(update_or_insert_charge_query)
+            all_time_result = conn.execute(update_or_insert_charge_query)
             select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc(), leaderboard_table.c.lastUpdated)
             res = conn.execute(select_st)
             for _row in res:
@@ -797,7 +834,7 @@ async def ask_a_question(ctx):
                 await private_bot_feedback_channel.send(embed=embed)
 
         x = random.randint(0, len(all_questions)-1)
-        embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds'])} seconds to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=jiselConf['info_color'])
+        embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds']) if jiselConf['expiration_seconds'] < 100 else str(math.floor(jiselConf['expiration_seconds']/60))} {'seconds' if jiselConf['expiration_seconds'] < 100 else 'minutes'} to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
         set_current_question(all_questions[x]['id'])
         await trivia_channel.send(embed=embed)
 
