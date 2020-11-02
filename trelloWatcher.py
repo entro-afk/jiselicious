@@ -97,8 +97,10 @@ async def on_ready():
     print('Bot is ready.')
     while True:
         try:
+            print('another loop------', datetime.datetime.now().time())
             await update_trello_cards_and_time()
             await asyncio.sleep(3.0)
+            print('finished loop---------', datetime.datetime.now().time())
         except Exception as err:
             print(err)
 
