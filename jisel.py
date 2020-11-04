@@ -1398,6 +1398,19 @@ async def delete_answer(ctx, id):
         embed = Embed(title=f"Answer #{id} Deleted:", color=0x00ff00)
         await ctx.message.channel.send(embed=embed)
 
+@client.command(pass_context=True, name="stop")
+@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+async def stop_trivia(ctx, id):
+    if ctx.message.channel.name == jiselConf['trivia_channel']:
+        redis_client.set('lasthour', 'stop')
+
+
+@client.command(pass_context=True, name="start")
+@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+async def start_trivia(ctx, id):
+    if ctx.message.channel.name == jiselConf['trivia_channel']:
+        redis_client.set('lasthour', 'start')
+
 
 def delete_answer_by_id(answer_id):
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
