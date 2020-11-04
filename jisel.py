@@ -1400,16 +1400,16 @@ async def delete_answer(ctx, id):
 
 @client.command(pass_context=True, name="stop")
 @commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
-async def stop_trivia(ctx, id):
+async def stop_trivia(ctx):
     if ctx.message.channel.name == jiselConf['trivia_channel']:
-        redis_client.set('lasthour', 'stop')
+        redis_client.set('start', 'no')
 
 
 @client.command(pass_context=True, name="start")
 @commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
 async def start_trivia(ctx, id):
     if ctx.message.channel.name == jiselConf['trivia_channel']:
-        redis_client.set('lasthour', 'start')
+        redis_client.set('start', 'yes')
 
 
 def delete_answer_by_id(answer_id):
