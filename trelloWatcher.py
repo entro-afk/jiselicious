@@ -152,16 +152,17 @@ async def update_trello_cards_and_time():
             curr_question_id = get_current_trivia_question_id()
             trivia_of_hour_msg_id = r.get('lastmessageid')
             trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
-            current_trivia_question_obj = get_question_by_id(curr_question_id)
-            time_expire = current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=jiselConf['expiration_seconds'])
-            if curr_question_id and now > time_expire:
-                result_remove_curr_trivia = remove_current_trivia()
-                if result_remove_curr_trivia:
-                    private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
-                    private_embed = Embed(title=f"Question of The Hour (ID#{curr_question_id}) has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
-                    embed = Embed(title="Current Question for this hour has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
-                    await private_bot_feedback_channel.send(embed=private_embed)
-                    await trivia_channel.send(embed=embed)
+            if curr_question_id:
+                current_trivia_question_obj = get_question_by_id(curr_question_id)
+                time_expire = current_trivia_question_obj['time_asked'] + datetime.timedelta(seconds=jiselConf['expiration_seconds'])
+                if now > time_expire:
+                    result_remove_curr_trivia = remove_current_trivia()
+                    if result_remove_curr_trivia:
+                        private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+                        private_embed = Embed(title=f"Question of The Hour (ID#{curr_question_id}) has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
+                        embed = Embed(title="Current Question for this hour has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
+                        await private_bot_feedback_channel.send(embed=private_embed)
+                        await trivia_channel.send(embed=embed)
             if trivia_of_hour_msg_id:
                 question_of_the_hour_message = await trivia_channel.fetch_message(int(trivia_of_hour_msg_id))
                 if question_of_the_hour_message:
