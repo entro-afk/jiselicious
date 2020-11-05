@@ -1401,7 +1401,7 @@ async def delete_answer(ctx, id):
 @client.command(pass_context=True, name="stop")
 @commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
 async def stop_trivia(ctx):
-    if ctx.message.channel.name == jiselConf['bot_feed_back_channel']:
+    if ctx.message.channel.name == jiselConf['bot_feed_back_channel']['name']:
         try:
             redis_client.set('start', 'no')
             await emoji_success_feedback(ctx.message)
@@ -1412,7 +1412,7 @@ async def stop_trivia(ctx):
 @client.command(pass_context=True, name="start")
 @commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
 async def start_trivia(ctx):
-    if ctx.message.channel.name == jiselConf['bot_feed_back_channel']:
+    if ctx.message.channel.name == jiselConf['bot_feed_back_channel']['name']:
         try:
             redis_client.set('start', 'yes')
             await emoji_success_feedback(ctx.message)
