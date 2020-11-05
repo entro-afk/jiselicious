@@ -187,12 +187,12 @@ async def update_trello_cards_and_time():
             print('The random minute------', random_minute)
             last_hour = r.get('lasthour')
             has_started_trivia = r.get('start')
-            print('has_started_trivia-------------', str(has_started_trivia))
+            print('has_started_trivia-------------', has_started_trivia.decode("utf-8"))
             print('The last hour------', last_hour)
-            if last_hour and str(has_started_trivia) == 'yes':
+            if last_hour and has_started_trivia.decode("utf-8") == 'yes':
                 last_hour = int(last_hour)
                 print('The last hour integer------', last_hour)
-            if now.hour != last_hour and str(has_started_trivia) == 'yes':
+            if now.hour != last_hour and has_started_trivia.decode("utf-8") == 'yes':
                 if last_hour:
                     r.delete('lasthour')
                 print('Got random minute------', now.minute)
