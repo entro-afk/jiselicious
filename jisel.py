@@ -1407,7 +1407,7 @@ async def stop_trivia(ctx):
 
 @client.command(pass_context=True, name="start")
 @commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
-async def start_trivia(ctx, id):
+async def start_trivia(ctx):
     if ctx.message.channel.name == jiselConf['trivia_channel']:
         redis_client.set('start', 'yes')
 
