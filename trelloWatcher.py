@@ -321,6 +321,7 @@ async def ask_a_question():
             if result_remove_curr_trivia:
                 set_current_question(trivia_questions[x]['id'])
                 curr_trivia_message = await trivia_channel.send(embed=embed)
+                await asyncio.sleep(1.0)
                 print('setting a key for currtriviaexists after asking a question-------------', str(x))
                 r.set('currtriviaexists', str(x))
                 r.set('lastmessageid', str(curr_trivia_message.id))
