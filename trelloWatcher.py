@@ -199,7 +199,8 @@ async def update_trello_cards_and_time():
                 if last_hour:
                     r.delete('lasthour')
                 print('Got random minute------', now.minute)
-                await ask_a_question()
+                if not curr_question_has_not_expired:
+                    await ask_a_question()
                 random_minute = random.randint(0, 30)
                 r.set('lasthour', str(now.hour))
         last_interval_update = r.get('last5MinuteUpdate')
@@ -319,7 +320,7 @@ async def ask_a_question():
             if result_remove_curr_trivia:
                 set_current_question(trivia_questions[x]['id'])
                 curr_trivia_message = await trivia_channel.send(embed=embed)
-                r.set('currtriviaexists', str(curr_trivia_message.id))
+                r.set('currtriviaexists', str(x))
                 r.set('lastmessageid', str(curr_trivia_message.id))
                 print('setting an expiration after asking a question-------------', datetime.datetime.now().time())
                 r.expire('currtriviaexists', jiselConf['expiration_seconds'])
