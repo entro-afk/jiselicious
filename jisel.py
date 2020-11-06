@@ -584,13 +584,13 @@ async def main(message):
 async def handle_announcement(message):
     if message.channel.name == jiselConf['announcements_channel']:
         split_msg = message.content.split(" ")
-        if "photos/a." in message.content and "?type=3" in message.content:
+        if "photos/a." in message.content and "?type=3" in message.content and not message.embeds:
             for i, msg in enumerate(split_msg):
                 if "photos/a." in msg:
                     split_msg[i] = re.sub('\?type=3', '', msg)
-        reformed_msg = " ".join(split_msg)
-        await message.channel.send(reformed_msg)
-        await message.delete()
+            reformed_msg = " ".join(split_msg)
+            await message.channel.send(reformed_msg)
+            await message.delete()
 
 async def handle_trivia_message(message):
     if message.channel.name == jiselConf['trivia_channel']:
