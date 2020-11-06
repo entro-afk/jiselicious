@@ -149,6 +149,7 @@ async def update_trello_cards_and_time():
         guild = client.get_guild(jiselConf['guild_id'])
         curr_question_has_not_expired = r.get('currtriviaexists')
         if not curr_question_has_not_expired:
+            print('question has expired so sending expire notification-------------', datetime.datetime.now())
             curr_question_id = get_current_trivia_question_id()
             trivia_of_hour_msg_id = r.get('lastmessageid')
             trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
@@ -320,10 +321,12 @@ async def ask_a_question():
             if result_remove_curr_trivia:
                 set_current_question(trivia_questions[x]['id'])
                 curr_trivia_message = await trivia_channel.send(embed=embed)
+                print('setting a key for currtriviaexists after asking a question-------------', str(x))
                 r.set('currtriviaexists', str(x))
                 r.set('lastmessageid', str(curr_trivia_message.id))
-                print('setting an expiration after asking a question-------------', datetime.datetime.now().time())
+                print('setting an expiration after asking a question-------------', str(curr_trivia_message.id))
                 r.expire('currtriviaexists', jiselConf['expiration_seconds'])
+                await asyncio.sleep(1.0)
 
 def get_trivia_leader_board():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
