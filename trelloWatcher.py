@@ -99,7 +99,6 @@ async def on_ready():
         try:
             print('another loop------', datetime.datetime.now().time())
             await update_trello_cards_and_time()
-            await asyncio.sleep(3.0)
             print('finished loop---------', datetime.datetime.now().time())
         except Exception as err:
             print(err)
@@ -321,13 +320,11 @@ async def ask_a_question():
             if result_remove_curr_trivia:
                 set_current_question(trivia_questions[x]['id'])
                 curr_trivia_message = await trivia_channel.send(embed=embed)
-                await asyncio.sleep(1.0)
                 print('setting a key for currtriviaexists after asking a question-------------', str(x))
                 r.set('currtriviaexists', str(x))
                 r.set('lastmessageid', str(curr_trivia_message.id))
                 print('setting an expiration after asking a question-------------', str(curr_trivia_message.id))
                 r.expire('currtriviaexists', jiselConf['expiration_seconds'])
-                await asyncio.sleep(1.0)
 
 def get_trivia_leader_board():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
