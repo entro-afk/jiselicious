@@ -97,9 +97,7 @@ async def on_ready():
     print('Bot is ready.')
     while True:
         try:
-            print('another loop------', datetime.datetime.now().time())
             await update_trello_cards_and_time()
-            print('finished loop---------', datetime.datetime.now().time())
         except Exception as err:
             print(err)
 
@@ -148,7 +146,6 @@ async def update_trello_cards_and_time():
         guild = client.get_guild(jiselConf['guild_id'])
         curr_question_has_not_expired = r.get('currtriviaexists')
         if not curr_question_has_not_expired:
-            print('question has expired so sending expire notification-------------', datetime.datetime.now())
             curr_question_id = get_current_trivia_question_id()
             trivia_of_hour_msg_id = r.get('lastmessageid')
             trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
@@ -190,8 +187,6 @@ async def update_trello_cards_and_time():
             print('The random minute------', random_minute)
             last_hour = r.get('lasthour')
             has_started_trivia = r.get('start')
-            print('has_started_trivia-------------', has_started_trivia.decode("utf-8"))
-            print('The last hour------', last_hour)
             if last_hour and has_started_trivia.decode("utf-8") == 'yes':
                 last_hour = int(last_hour)
                 print('The last hour integer------', last_hour)
