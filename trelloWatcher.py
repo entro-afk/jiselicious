@@ -394,7 +394,7 @@ async def update_jisel_before():
 # test token
 # client.run(channelsConf['test_bot_token'])
 # pwm token
-update_trello_cards_and_time.start()
+listener_routine.start()
 client.run(jiselConf['bot_token'])
 
 # pm2 reload antiPerms.py --interpreter=python3
