@@ -130,6 +130,24 @@ def append_random_codes(card, number_of_codes):
     card.set_description(card.description + f"\n{codes_sent}")
 
 @loop(seconds=1)
+async def listener_routine():
+    await asyncio.gather(
+        update_trello_cards_and_time(),
+        update_time_channels()
+    )
+
+async def update_time_channels():
+    now = datetime.datetime.now()
+    last_interval_update = r.get('last5MinuteUpdate')
+    if last_interval_update:
+        last_interval_update = int(last_interval_update)
+    if now.minute % 5 == 0 and now.minute != last_interval_update:
+        print('started updating time-------------', datetime.datetime.now().time())
+        await update_time()
+        r.set('last5MinuteUpdate', now.minute)
+        print('finished updating times---------------', datetime.datetime.now().time())
+
+
 async def update_trello_cards_and_time():
     global random_minute
 
@@ -196,14 +214,6 @@ async def update_trello_cards_and_time():
                     await ask_a_question()
                 random_minute = random.randint(0, 30)
                 r.set('lasthour', str(now.hour))
-        last_interval_update = r.get('last5MinuteUpdate')
-        if last_interval_update:
-            last_interval_update = int(last_interval_update)
-        if now.minute % 5 == 0 and now.minute != last_interval_update:
-            print('started updating time-------------', datetime.datetime.now().time())
-            await update_time()
-            r.set('last5MinuteUpdate', now.minute)
-            print('finished updating times---------------', datetime.datetime.now().time())
     except Exception as err:
         print(err)
 
@@ -232,7 +242,8 @@ async def update_time():
                         )
                     )
                     res = conn.execute(update_statement)
-                    guild = await client.fetch_guild(_row[5])
+                    await client.wait_until_ready()
+                    guild = client.get_guild(_row[5])
                     if guild:
                         channel = get(guild.voice_channels, id=int(_row[2]))
                         if channel:
@@ -373,6 +384,7 @@ def get_current_trivia_question_id():
         if conn:
             conn.close()
         db.dispose()
+
 
 @update_trello_cards_and_time.before_loop
 async def update_jisel_before():
