@@ -231,8 +231,7 @@ async def update_time():
                         )
                     )
                     res = conn.execute(update_statement)
-                    await client.wait_until_ready()
-                    guild = client.get_guild(_row[5])
+                    guild = await client.fetch_guild(_row[5])
                     if guild:
                         channel = get(guild.voice_channels, id=int(_row[2]))
                         if channel:
