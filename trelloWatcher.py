@@ -24,6 +24,8 @@ import pytz
 import random
 import redis
 import math
+from discord.ext.tasks import loop
+
 client = commands.Bot(command_prefix='+')
 
 with open(r'jiselConf.yaml') as file:
@@ -92,15 +94,6 @@ def event_handler(msg):
         pass
 
 
-@client.event
-async def on_ready():
-    print('Bot is ready.')
-    while True:
-        try:
-            await update_trello_cards_and_time()
-        except Exception as err:
-            print(err)
-
 def check_if_card_contains_codes(card):
     for text in re.split(r"\s+|\n", card.description):
         if len(text) == 8 and text[0:3] in jiselConf['code_prefixes']:
@@ -135,8 +128,9 @@ def append_random_codes(card, number_of_codes):
     codes_sent = "These are your codes:\n" + "       ".join(codes_obtained)
 
     card.set_description(card.description + f"\n{codes_sent}")
+
+@loop(seconds=1)
 async def update_trello_cards_and_time():
-    global has_asked_a_question
     global random_minute
 
 
@@ -186,6 +180,7 @@ async def update_trello_cards_and_time():
         if now.minute >= random_minute:
             last_hour = r.get('lasthour')
             has_started_trivia = r.get('start')
+            print('Current random minute------', random_minute)
             if last_hour and has_started_trivia.decode("utf-8") == 'yes':
                 last_hour = int(last_hour)
             if now.hour != last_hour and has_started_trivia.decode("utf-8") == 'yes':
@@ -375,9 +370,15 @@ def get_current_trivia_question_id():
             conn.close()
         db.dispose()
 
+@update_trello_cards_and_time.before_loop
+async def update_jisel_before():
+    global trivia_questions
+    trivia_questions = get_questions()
+    await client.wait_until_ready()
 # test token
 # client.run(channelsConf['test_bot_token'])
 # pwm token
+update_trello_cards_and_time.start()
 client.run(jiselConf['bot_token'])
 
 # pm2 reload antiPerms.py --interpreter=python3
