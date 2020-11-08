@@ -178,6 +178,8 @@ async def update_trello_cards_and_time():
                 private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
                 embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
                 await private_bot_feedback_channel.send(embed=embed)
+        print("Less than current minute time before printing minute---------", datetime.datetime.now())
+        print('Less than current random minute------', random_minute)
         if now.minute >= random_minute:
             last_hour = r.get('lasthour')
             has_started_trivia = r.get('start')
