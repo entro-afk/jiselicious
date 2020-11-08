@@ -386,7 +386,7 @@ def get_current_trivia_question_id():
         db.dispose()
 
 
-@update_trello_cards_and_time.before_loop
+@listener_routine.before_loop
 async def update_jisel_before():
     global trivia_questions
     trivia_questions = get_questions()
