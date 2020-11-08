@@ -140,6 +140,7 @@ async def update_trello_cards_and_time():
         guild = client.get_guild(jiselConf['guild_id'])
         curr_question_has_not_expired = r.get('currtriviaexists')
         if not curr_question_has_not_expired:
+            print('has expired---------', datetime.datetime.now())
             curr_question_id = get_current_trivia_question_id()
             trivia_of_hour_msg_id = r.get('lastmessageid')
             trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
@@ -180,6 +181,7 @@ async def update_trello_cards_and_time():
         if now.minute >= random_minute:
             last_hour = r.get('lasthour')
             has_started_trivia = r.get('start')
+            print("Currennt time before printing minute---------", datetime.datetime.now())
             print('Current random minute------', random_minute)
             if last_hour and has_started_trivia.decode("utf-8") == 'yes':
                 last_hour = int(last_hour)
