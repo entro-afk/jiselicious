@@ -179,7 +179,7 @@ async def update_trello_cards_and_time():
                     await question_of_the_hour_message.delete()
                     r.delete('lastmessageid')
 
-        if now.weekday() == int(r.get('weekdayend')) and now.hour == int(r.get('hourend')) and r.get('minuteend') >= int(r.get('minuteend')):
+        if now.weekday() == int(r.get('weekdayend')) and now.hour == int(r.get('hourend')) and now.minute >= int(r.get('minuteend')):
             top_3 = get_trivia_leader_board()
             if top_3:
                 list_leader = []
