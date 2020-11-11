@@ -25,6 +25,7 @@ import pytz
 import math
 import random
 import redis
+import calendar
 
 client = commands.Bot(command_prefix='+')
 
@@ -570,6 +571,61 @@ async def handle_navi_report(ctx):
 
 
 
+@client.command(pass_context=True, name="today")
+async def list_events_today(ctx, day=""):
+    if ctx.guild.id == jiselConf['genshin_personal_guild_id']:
+        now = datetime.datetime.now(tz=pytz.timezone('Etc/GMT-1'))
+        print("now time is: ", now)
+        current_weekday = day if day else calendar.day_name[now.weekday()]
+        message_events = []
+        role_names_owned = [role.name for role in ctx.author.roles]
+        events_needed_today = get_owned_characters_dungeons_items_needed_for_day(current_weekday, role_names_owned)
+        dungeons = {}
+        for event in events_needed_today:
+            dungeon_key_name = f"{event['dungeon_name']}-{event['item_name']}"
+            if dungeon_key_name not in dungeons:
+                dungeons[dungeon_key_name] = []
+            dungeons[dungeon_key_name].append({
+                'character_name': event['character_name'],
+            })
+        dungeons_items_needed = '\n'.join(dungeons.keys())
+        embed = Embed(title="Today's Events", description=f"{dungeons_items_needed}", color=jiselConf['info_color'])
+        for dungeon in dungeons:
+            embed.add_field(name=dungeon if len(dungeons.keys()) > 1 else "Who needs this dungeon?", value='\n'.join([dungeon_character['character_name'] for dungeon_character in dungeons[dungeon]]))
+        if day:
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(embed=embed)
+
+
+def get_owned_characters_dungeons_items_needed_for_day(day, characters_owned):
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            eventsArray = []
+            events_table = Table('characterDungeonItemsNeededPerDay', metadata, autoload=True, autoload_with=conn)
+            select_st = select([events_table]).where(
+                and_(
+                    events_table.c.character_name.in_(characters_owned),
+                    events_table.c.day == day
+                )
+            ).order_by(events_table.c.dungeon_name)
+            res = conn.execute(select_st)
+            for row in res:
+                eventsArray.append({
+                    "character_name": row[1],
+                    "item_name": row[2],
+                    "dungeon_name": row[3],
+                    "day": row[4],
+                })
+            return eventsArray
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
 
 
 async def main(message):
@@ -1334,10 +1390,8 @@ async def add_answers_question(ctx, *args):
         while i < max_n:
             begin_num = i * 20
             embed = Embed(title=f"Added to Question ID#{question_id} " if i == 0 else "Continued", description=gathered_question['question'], color=0x00ff00)
-            answer_ids = '\n'.join(
-                [str(answer_row['id']) for answer_row in question_answers[begin_num:begin_num + 20]])
-            answer_texts = '\n'.join(
-                [answer_row['answer'] for answer_row in question_answers[begin_num:begin_num + 20]])
+            answer_ids = '\n'.join([str(answer_row['id']) for answer_row in question_answers[begin_num:begin_num + 20]])
+            answer_texts = '\n'.join([answer_row['answer'] for answer_row in question_answers[begin_num:begin_num + 20]])
             embed.add_field(name='Answer ID', value=f"{answer_ids}")
             embed.add_field(name='Answer', value=f"{answer_texts}")
             embed_sets.append(embed)
