@@ -572,13 +572,17 @@ async def handle_navi_report(ctx):
 
 
 @client.command(pass_context=True, name="today")
-async def list_events_today(ctx, day=""):
+async def list_events_today(ctx, member: Member = None, day=""):
+    target_person = ctx.author
+    if member is not None:
+        target_person = member
     if ctx.guild.id == jiselConf['genshin_personal_guild_id']:
         now = datetime.datetime.now(tz=pytz.timezone('Etc/GMT+3'))
         print("now time is: ", now)
         current_weekday = day if day else calendar.day_name[now.weekday()]
         message_events = []
-        role_names_owned = [role.name for role in ctx.author.roles]
+
+        role_names_owned = [role.name for role in target_person.roles]
         events_needed_today = get_owned_characters_dungeons_items_needed_for_day(current_weekday, role_names_owned)
         dungeons = {}
         for event in events_needed_today:
