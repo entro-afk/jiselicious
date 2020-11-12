@@ -574,7 +574,7 @@ async def handle_navi_report(ctx):
 @client.command(pass_context=True, name="today")
 async def list_events_today(ctx, day=""):
     if ctx.guild.id == jiselConf['genshin_personal_guild_id']:
-        now = datetime.datetime.now(tz=pytz.timezone('Etc/GMT-1'))
+        now = datetime.datetime.now(tz=pytz.timezone('Etc/GMT+3'))
         print("now time is: ", now)
         current_weekday = day if day else calendar.day_name[now.weekday()]
         message_events = []
