@@ -179,7 +179,7 @@ async def update_trello_cards_and_time():
                     await question_of_the_hour_message.delete()
                     r.delete('lastmessageid')
 
-        if now.weekday() == int(r.get('weekdayend')) and now.hour == int(r.get('hourend')) and now.minute >= int(r.get('minuteend')):
+        if now.weekday() == int(r.get('weekdayend')) and now.hour == int(r.get('hourend')) and now.minute == int(r.get('minuteend')):
             top_3 = get_trivia_leader_board()
             if top_3:
                 list_leader = []
@@ -190,12 +190,17 @@ async def update_trello_cards_and_time():
                     list_leader.append(row_leader)
                 stringified_top_3 = '\n'.join(list_leader)
                 embed = Embed(title="Weekly Leader Board", description=f"This week's Trivia Leaderboard:\n{stringified_top_3}\n\nCongratulations to <@!{top_3[0]['id']}>! 🎉 You've won this week's Trivia.\nA moderator will contact you privately with your prize.\n\n**Keep participating to find out who will be the next Trivia Master of the week!**", color=0x00ff00)
+                embed.set_image(url=jiselConf['trivia_banner_link'])
                 trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
                 await trivia_channel.send("", embed=embed)
                 clear_trivia_leaderboard()
                 private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
                 embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
                 await private_bot_feedback_channel.send(embed=embed)
+                r.set('weekdayend', str(now.weekday()))
+                r.set('hourend', str(now.hour))
+                r.set('minuteend', str(now.minute - 1 if now.minute > 0 else 59))
+
         print("Less than current minute time before printing minute---------", datetime.datetime.now())
         print('Less than current random minute------', random_minute)
         if now.minute >= random_minute:

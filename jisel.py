@@ -826,23 +826,10 @@ def clear_trivia_leaderboard():
 @client.command(pass_context=True, name="cleartrivialeaderboard")
 @commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
 async def clear_leaderboard(ctx):
-    participants = get_trivia_leader_board()
-    embed = Embed(title="Current Top 10", description="In Descending Order", color=jiselConf['info_color'])
-    if participants:
-        tag_names = [f"<@!{_row['id']}>" for _row in participants]
-        scores = [str(_row['score']) for _row in participants]
-        embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
-        embed.add_field(name="Score", value="\n".join(scores), inline=True)
-        await ctx.message.channel.send(embed=embed)
-
-    result_from_clear = clear_trivia_leaderboard()
-    if result_from_clear:
-        embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
-        await ctx.message.channel.send(embed=embed)
     now = datetime.datetime.now()
     redis_client.set('weekdayend', str(now.weekday()))
     redis_client.set('hourend', str(now.hour))
-    redis_client.set('minuteend', str(now.minute-1 if now.minute > 0 else 59))
+    redis_client.set('minuteend', str(now.minute))
 
 
 def get_current_trivia_question_id():
