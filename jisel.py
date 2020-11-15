@@ -1109,9 +1109,10 @@ async def output_available_docs(ctx):
     }
 
     msg = []
-    for c in commands_and_desc:
-        msg.append(f'**{c}**\n                    |                       {commands_and_desc[c]}')
-    embed = Embed(title=f"Commands and Descriptions", description='\n'.join(msg), color=0x00ff00)
+    embed = Embed(title=f"Commands and Descriptions", description= "Docs for Jiselicious", color=0x00ff00)
+    for c, d in commands_and_desc.items():
+        embed.add_field(name=c, value=d, inline=False)
+
     await ctx.send(embed=embed)
 
 
