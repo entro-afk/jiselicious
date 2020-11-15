@@ -1081,9 +1081,19 @@ async def assign_hoster_server_db(ctx, hoster_tag: Member, server_name):
         update_or_insert_server_query = f"INSERT INTO pwm.\"hosterServerMapping\" (\"discordID\", \"server\") VALUES ({hoster_tag.id}, \'{server_name}\') ON CONFLICT (\"discordID\") DO UPDATE SET \"server\" = '{server_name}'"
         result = conn.execute(update_or_insert_server_query)
 
-@client.command(pass_context=True, name="docs")
+@client.command(pass_context=True, name="jiselicious")
 async def output_available_docs(ctx):
     commands_and_desc = {
+        "+start": "starts the trivia",
+        "+stop": "stops the trivia",
+        "+cleartrivialeaderboard": "declare the new winner and send the leaderboard to the #perfect-trivia channel",
+        "+trivialeaderboard": "get the current trivia leaderboard for the week",
+        "+alltime": "get all time leaderboard",
+        "+answerquestion": "adds answers to a trivia question",
+        "+listquestions": "list questions to a trivia",
+        "+getquestion <ID of question or whole question string": "gets the question by the question string itself or by question ID",
+        "+delete <ID of question>": "deletes question given the question ID",
+        "+deleteanswer <ID of answer": "deletes an answer given the answer ID",
         "+perms <@ user ID>  <insert perm here>": "Gives perms. perms include `all`, `read`, `send`, `embed`, `attach`, `external`, `react`, `cinvite`, `mchannel`, `mperm`, `mweb`, `TTS`, `mmsg`, `rhistory`, `mention`, `exreact`",
         "-perms <@ user ID>  <insert perm here>": "Removes perms. perms include `all`, `read`, `send`, `embed`, `attach`, `external`, `react`, `cinvite`, `mchannel`, `mperm`, `mweb`, `TTS`, `mmsg`, `rhistory`, `mention`, `exreact`",
         "+charge <@ user ID> <Number>": "Gives the mentioned veteran hoster <Number> code requests",
@@ -1095,7 +1105,7 @@ async def output_available_docs(ctx):
         "+server <@ mentioned hoster> <server name>": "Assigns a server name to the mentioned hoster",
         "+whichserver <@ mentioned hoster>": "Gets hoster's current server",
         "+updatecomplete day/month/year ": "+updatecomplete 26/7/2020 moves a card from Codes Sent Trello List to EC-Logs or makes a new one if Jiselicious detects a new sent code that been newly used and uploaded",
-        "+hoster <Name>": "+hoster Facebook would give Facebook's current stats for the past week",
+        "+hoster <Name>": "+hoster Facebook would give Facebook's current stats for the past week"
     }
 
     msg = []
