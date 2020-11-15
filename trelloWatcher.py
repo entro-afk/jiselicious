@@ -189,7 +189,7 @@ async def update_trello_cards_and_time():
                     i += 1
                     list_leader.append(row_leader)
                 stringified_top_3 = '\n'.join(list_leader)
-                embed = Embed(title="Weekly Leader Board", description=f"This week's Trivia Leaderboard:\n{stringified_top_3}\n\nCongratulations to <@!{top_3[0]['id']}>! 🎉 You've won this week's Trivia.\nA moderator will contact you privately with your prize.\n\n**Keep participating to find out who will be the next Trivia Master of the week!**", color=0x00ff00)
+                embed = Embed(title="Weekly Leader Board", description=f"This week's Trivia Leaderboard:\n{stringified_top_3}\n\nCongratulations to <@!{top_3[0]['id']}>!\n 🎉 You have won this week's Trivia.\nA moderator will contact you privately with your prize.\n\n**Keep participating to find out who will be the next Trivia Master of the week!**", color=0x00ff00)
                 embed.set_image(url=jiselConf['trivia_banner_link'])
                 trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
                 await trivia_channel.send("", embed=embed)
