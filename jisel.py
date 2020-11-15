@@ -1100,7 +1100,7 @@ async def output_available_docs(ctx):
         "+charge?": "Gets the mentioned veteran hoster's currently allowed code requests",
         "+code [one or more three letter prefixes]": "+code ABC GLC WXL DEF",
         "+return <one code>": "+return WXL12345",
-        "+timechannel <name> <Etc/GMT-2 or other timezone>": "name must be a string and not a tag",
+        "+timechannel <Etc/GMT-2 or other timezone> <name>": "name must be a string and not a tag",
         "+veteranswho": "Gives a list of veteran hosters' discord tags, discord ID, and Current Hosting Servers",
         "+server <@ mentioned hoster> <server name>": "Assigns a server name to the mentioned hoster",
         "+whichserver <@ mentioned hoster>": "Gets hoster's current server",
