@@ -1081,7 +1081,7 @@ async def assign_hoster_server_db(ctx, hoster_tag: Member, server_name):
         update_or_insert_server_query = f"INSERT INTO pwm.\"hosterServerMapping\" (\"discordID\", \"server\") VALUES ({hoster_tag.id}, \'{server_name}\') ON CONFLICT (\"discordID\") DO UPDATE SET \"server\" = '{server_name}'"
         result = conn.execute(update_or_insert_server_query)
 
-@client.command(pass_context=True, name="jiselicious")
+@client.command(pass_context=True, name="docs")
 async def output_available_docs(ctx):
     commands_and_desc = {
         "+start": "starts the trivia",
