@@ -344,24 +344,24 @@ async def callback_second_validator(message):
 
 
 async def handle_complete_events(message):
-    if message.channel.type == ChannelType.text and message.channel.name == jiselConf['complete_events_channel'] and "event" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
+    if message.channel.type == ChannelType.text and message.channel.name == jiselConf['complete_events_channel'] and "event" in message.content.lower() and bool(re.search(r'\d', message.content)):
         last_messages = await get_all_messages(message.channel)
         if len(last_messages) > 1:
             last_event_number = extract_event_number(last_messages[1])
             current_event_number = extract_event_number(last_messages[0])
-            if "Next hoster, please use this number as your event number" not in last_messages[1].clean_content:
+            if "Next hoster, please use this number as your event number" not in last_messages[1].content:
                 await event_number_validator(last_messages[0], last_event_number, current_event_number)
 
 def find_number_of_codes_needed(message):
-    for text in re.split(r"\n", message.clean_content):
+    for text in re.split(r"\n", message.content):
         if any(word in text.lower() for word in ['round', 'win']):
             return int(re.findall('\d+', text)[0])
 
 async def handle_request_event(message):
-    if message.channel.type == ChannelType.text and message.channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.clean_content.upper() or message.clean_content.upper().startswith("Server".upper())):
+    if message.channel.type == ChannelType.text and message.channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.content.upper() or message.content.upper().startswith("Server".upper())):
         board = trello_client.get_board(jiselConf['trello']['board_id'])
         request_list = board.get_list(jiselConf['trello']['list_id'])
-        new_card = request_list.add_card(message.author.nick or message.author.name, message.clean_content)
+        new_card = request_list.add_card(message.author.nick or message.author.name, message.content)
         db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
         db = create_engine(db_string)
         metadata = MetaData(schema="pwm")
@@ -400,8 +400,8 @@ async def handle_bug_report(message):
             await handle_open_bug_report(message)
 
         else:
-            if message.clean_content.lower().startswith("NO.".lower()):
-                split_text = message.clean_content.rstrip("\n\r").split("\n")
+            if message.content.lower().startswith("NO.".lower()):
+                split_text = message.content.rstrip("\n\r").split("\n")
                 bug_number = re.sub("NO.|NO|No.|No", '', split_text[0]).strip()
                 bug_submitter = re.sub("Submitter/Server:", '', split_text[1]).strip()
                 bug_details = re.sub("BUG details:", '', split_text[2]).strip()
@@ -470,18 +470,18 @@ async def handle_open_bug_report(message):
         for key in redis_client.scan_iter(f'{message.author.id}_bug_*'):
             redis_client.delete(key)
     elif not bug_id_sent:
-        redis_client.set(f"{message.author.id}_bug_id_sent", message.clean_content)
-        preview_embed.set_field_at(0, name="Bug ID", value=message.clean_content)
+        redis_client.set(f"{message.author.id}_bug_id_sent", message.content)
+        preview_embed.set_field_at(0, name="Bug ID", value=message.content)
         await bug_report_preview_msg.edit(embed=preview_embed)
         questionnaire_embed = Embed(title="Who is the submitter and in what server was this bug found?", color=jiselConf['info_color'])
     elif not bug_submitter_and_server_sent:
-        redis_client.set(f"{message.author.id}_bug_submitter_and_server_sent", message.clean_content)
-        preview_embed.set_field_at(1, name="Bug Submitter/Server", value=message.clean_content)
+        redis_client.set(f"{message.author.id}_bug_submitter_and_server_sent", message.content)
+        preview_embed.set_field_at(1, name="Bug Submitter/Server", value=message.content)
         await bug_report_preview_msg.edit(embed=preview_embed)
         questionnaire_embed = Embed(title="Please provide concise details for this bug", color=jiselConf['info_color'])
     elif not bug_details_sent:
-        redis_client.set(f"{message.author.id}_bug_details_sent", message.clean_content)
-        preview_embed.set_field_at(2, name="Bug Details", value=message.clean_content)
+        redis_client.set(f"{message.author.id}_bug_details_sent", message.content)
+        preview_embed.set_field_at(2, name="Bug Details", value=message.content)
         await bug_report_preview_msg.edit(embed=preview_embed)
         questionnaire_embed = Embed(title="Please provide screenshots of your bug.  A Link to a video would be ideal", color=jiselConf['info_color'])
     elif not bug_done_screenshots:
@@ -535,13 +535,13 @@ async def start_report_questionaire(ctx):
 
 
 async def check_if_valid_navi_message(message):
-    if len(message.clean_content.split("\n")) != 4:
+    if len(message.content.split("\n")) != 4:
         return False
-    if not message.clean_content.split("\n")[1].startswith("Questioner:"):
+    if not message.content.split("\n")[1].startswith("Questioner:"):
         return False
-    if not message.clean_content.split("\n")[2].startswith("Question Details:"):
+    if not message.content.split("\n")[2].startswith("Question Details:"):
         return False
-    if not message.clean_content.split("\n")[3].startswith("Screenshot:"):
+    if not message.content.split("\n")[3].startswith("Screenshot:"):
         return False
     await emoji_success_feedback(message)
     return True
@@ -668,7 +668,7 @@ async def handle_trivia_message(message):
                 print('does it think that it did not expire---------')
                 answers = get_table_answers(current_trivia_question_id, None)
                 lower_case_answers = [answer_row['answer'].lower() for answer_row in answers]
-                if message.clean_content.lower() in lower_case_answers:
+                if message.content.lower() in lower_case_answers:
                     embed = Embed(title="That's correct!", description=f"<:PWM_yes:770642224249045032> Congratulations, <@!{message.author.id}>. You've gained 10 points!", color=4437377)
                     await message.channel.send(embed=embed)
                     result_remove_curr_question = remove_current_trivia()
@@ -907,7 +907,7 @@ async def ask_a_question(ctx):
                 await private_bot_feedback_channel.send(embed=embed)
 
         x = random.randint(0, len(all_questions)-1)
-        embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds']) if jiselConf['expiration_seconds'] < 100 else str(math.floor(jiselConf['expiration_seconds']/60))} {'seconds' if jiselConf['expiration_seconds'] < 100 else 'minutes'} to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
+        embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds']) if jiselConf['expiration_seconds'] < 100 else str(math.floor(jiselConf['expiration_seconds']/60))} {'seconds' if jiselConf['expiration_seconds'] < 100 else 'minutes'} to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=7506394)
         set_current_question(all_questions[x]['id'])
         await trivia_channel.send(embed=embed)
 
@@ -915,7 +915,7 @@ async def ask_a_question(ctx):
 async def on_raw_reaction_add(payload):
     channel = client.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
-    if payload.emoji.name == jiselConf['charge_emoji_name'] and channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.clean_content.upper() or message.clean_content.upper().startswith("Server".upper())):
+    if payload.emoji.name == jiselConf['charge_emoji_name'] and channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.content.upper() or message.content.upper().startswith("Server".upper())):
         db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
         db = create_engine(db_string)
         metadata = MetaData(schema="pwm")
@@ -990,7 +990,7 @@ async def send_to_google_sheet(message):
 
 
 def extract_event_number(message):
-    message_split_into_lines = message.clean_content.split("\n")
+    message_split_into_lines = message.content.split("\n")
     for line in message_split_into_lines:
         if "time" not in line.lower() and "event" in line.lower() and bool(re.search(r'\d', line)):
             return int(re.findall('\d+', line)[0])
@@ -1002,16 +1002,16 @@ async def get_all_messages(channel):
     events = []
     async for message in channel.history(limit=50):
         if message.author.id != client.user.id:
-            if "event" in message.clean_content.lower() and "id" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
+            if "event" in message.content.lower() and "id" in message.content.lower() and bool(re.search(r'\d', message.content)):
                 events.append(message)
-        elif "Next hoster, please use this number as your event number" in message.clean_content and bool(re.search(r'\d', message.clean_content)):
+        elif "Next hoster, please use this number as your event number" in message.content and bool(re.search(r'\d', message.content)):
             events.append(message)
     return events
 
 
 def find_code_in_gyazo_links(message, event_code):
     gyazo_links = []
-    message_split_into_lines = message.clean_content.split("\n")
+    message_split_into_lines = message.content.split("\n")
     for line in message_split_into_lines:
         if "gyazo.com" in line.lower():
             code_uri = line.split("/")[-1]
@@ -1026,7 +1026,7 @@ def find_code_in_gyazo_links(message, event_code):
 
 def get_all_codes_from_gyazo_link(message):
     detected_codes = []
-    message_split_into_lines = message.clean_content.split("\n")
+    message_split_into_lines = message.content.split("\n")
     for line in message_split_into_lines:
         if "gyazo.com" in line.lower():
             code_uri = line.split("/")[-1]
@@ -1044,7 +1044,7 @@ async def find_message_with_codes(channel, event_code):
     events = []
     async for message in channel.history(limit=250):
         if message.author.id != client.user.id:
-            if "gyazo.com" in message.clean_content:
+            if "gyazo.com" in message.content:
                 if find_code_in_gyazo_links(message, event_code) is not None:
                     return message.jump_url
 
@@ -1156,11 +1156,11 @@ def check_if_any_ec_log_card_contains_message_codes_already(ec_logs, text_detect
 async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec_logs, start_date):
     event_num = 0
     async for message in channel.history(limit=250, oldest_first=True, after=start_date):
-        print(f"Message author:{message.author.name}   content: {message.clean_content}")
-        if "event" in message.clean_content.lower() and "id" in message.clean_content.lower() and bool(re.search(r'\d', message.clean_content)):
+        print(f"Message author:{message.author.name}   content: {message.content}")
+        if "event" in message.content.lower() and "id" in message.content.lower() and bool(re.search(r'\d', message.content)):
             event_num = extract_event_number(message)
         if message.author.id != client.user.id:
-            if "gyazo.com" not in message.clean_content and message.attachments:
+            if "gyazo.com" not in message.content and message.attachments:
                 print("remote ocr-ing")
                 new_card_needed = False
                 for pic in message.attachments:
@@ -1186,17 +1186,17 @@ async def check_messages_contains_any_codes(channel, code_to_card_id_mapping, ec
                         else:
                             new_card_needed = False
                     if new_card_needed:
-                        new_card = ec_logs.add_card(message.author.name, message.clean_content)
+                        new_card = ec_logs.add_card(message.author.name, message.content)
                         new_card.change_pos("bottom")
                         codes_sent = "Codes:\n" + "       ".join(codes_used)
                         hoster_server = get_server(message.author.id)
                         new_card.set_description(f"Server: {hoster_server}" + "\n" + new_card.description + f"\n{codes_sent}" + f"\n#{event_num}")
-            elif "gyazo.com" in message.clean_content:
+            elif "gyazo.com" in message.content:
                 codes = list(set(get_all_codes_from_gyazo_link(message)))
                 if not check_if_any_ec_log_card_contains_message_codes_already(ec_logs, '   '.join(codes)):
                     event_number = extract_event_number(message)
                     hoster_server = get_server(message.author.id)
-                    card_content = f"Server: {hoster_server}" + "\n" + message.clean_content.split('\n')[1] + "\n" + '   '.join(codes) + "\n\n#" + str(event_number)
+                    card_content = f"Server: {hoster_server}" + "\n" + message.content.split('\n')[1] + "\n" + '   '.join(codes) + "\n\n#" + str(event_number)
                     new_card = ec_logs.add_card(message.author.nick or message.author.name, card_content)
                     new_card.change_pos("bottom")
 
@@ -1586,7 +1586,7 @@ def check_if_trello_code_in_discord(code):
 
 def get_all_codes_from_trello_card(message):
     detected_codes = []
-    message_split_into_lines = message.clean_content.split("\n")
+    message_split_into_lines = message.content.split("\n")
     for line in message_split_into_lines:
         if "gyazo.com" in line.lower():
             code_uri = line.split("/")[-1]
