@@ -653,7 +653,7 @@ async def handle_announcement(message):
             await message.delete()
 
 async def handle_trivia_message(message):
-    message.content = message.content.replace('’', "'")
+    message.content = re.sub("’|’|'|‘", "'", message.content)
     if message.channel.name == jiselConf['trivia_channel']:
         print('realized that this is the trivia channel------------')
         current_trivia_question_obj = get_current_trivia_question_id()
