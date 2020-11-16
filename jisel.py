@@ -653,6 +653,7 @@ async def handle_announcement(message):
             await message.delete()
 
 async def handle_trivia_message(message):
+    message.content = message.content.replace('’', "'")
     if message.channel.name == jiselConf['trivia_channel']:
         print('realized that this is the trivia channel------------')
         current_trivia_question_obj = get_current_trivia_question_id()
@@ -1378,8 +1379,8 @@ async def add_answers_question(ctx, *args):
     question = ""
 
     items = []
-    question = ' '.join(args).split("|")[0]
-    items = ' '.join(args).split("|")[1:]
+    question = ' '.join(args).replace('’', "'").split("|")[0]
+    items = ' '.join(args).replace('’', "'").split("|")[1:]
 
     try:
         if question.strip().isnumeric():
