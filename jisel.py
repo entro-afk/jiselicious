@@ -716,7 +716,7 @@ def get_trivia_leader_board():
         db.dispose()
 
 @client.command(pass_context=True, name="trivialeaderboard")
-@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
 async def get_leaderboard(ctx):
     participants = get_trivia_leader_board()
     embed = Embed(title="Current Top 10", description="In Descending Order", color=jiselConf['info_color'])
@@ -728,7 +728,7 @@ async def get_leaderboard(ctx):
         await ctx.message.channel.send(embed=embed)
 
 @client.command(pass_context=True, name="alltime")
-@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
 async def get_leaderboard(ctx):
     participants = get_all_time()
     embed = Embed(title="Current Top 10", description="In Descending Order", color=jiselConf['info_color'])
@@ -824,7 +824,7 @@ def clear_trivia_leaderboard():
         db.dispose()
 
 @client.command(pass_context=True, name="cleartrivialeaderboard")
-@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
 async def clear_leaderboard(ctx):
     now = datetime.datetime.now()
     redis_client.set('weekdayend', str(now.weekday()))
@@ -855,7 +855,7 @@ def get_current_trivia_question_id():
         db.dispose()
 
 @client.command(pass_context=True, name="currquestion")
-@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
 async def get_curr_question(ctx):
     current_trivia_question_obj = get_current_trivia_question_id()
     if current_trivia_question_obj:
@@ -892,7 +892,7 @@ def set_current_question(question_id):
         db.dispose()
 
 @client.command(pass_context=True, name="forcetrivia")
-@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
 async def ask_a_question(ctx):
     all_questions = get_questions()
     trivia_channel = get(ctx.guild.text_channels, name=jiselConf['trivia_channel'])
@@ -1459,7 +1459,7 @@ def delete_question_by_id(question_id):
         db.dispose()
 
 @client.command(pass_context=True, name="deleteanswer")
-@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
 async def delete_answer(ctx, id):
     result_rom_deletion = delete_answer_by_id(id)
     if result_rom_deletion:
@@ -1467,7 +1467,7 @@ async def delete_answer(ctx, id):
         await ctx.message.channel.send(embed=embed)
 
 @client.command(pass_context=True, name="stop")
-@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
 async def stop_trivia(ctx):
     if ctx.message.channel.name == jiselConf['bot_feed_back_channel']['name']:
         try:
@@ -1478,7 +1478,7 @@ async def stop_trivia(ctx):
 
 
 @client.command(pass_context=True, name="start")
-@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
 async def start_trivia(ctx):
     if ctx.message.channel.name == jiselConf['bot_feed_back_channel']['name']:
         try:
@@ -1504,7 +1504,7 @@ def delete_answer_by_id(answer_id):
         db.dispose()
 
 @client.command(pass_context=True, name="delete")
-@commands.has_any_role('Jiselicious', 'Moderator', 'Assistant Admin', "Veteran Hoster")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
 async def delete_question(ctx, id):
     gathered_question = get_question_by_id(id)
     result_from_deletion = delete_question_by_id(id)
