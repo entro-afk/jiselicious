@@ -730,7 +730,7 @@ async def get_leaderboard(ctx):
 
 @client.command(pass_context=True, name="alltime")
 @commands.has_any_role('Jiselicious', 'Assistant Admin')
-async def get_leaderboard(ctx):
+async def get_alltime_leaderboard(ctx):
     participants = get_all_time()
     embed = Embed(title="Current Top 10", description="In Descending Order", color=jiselConf['info_color'])
     if participants:
@@ -739,6 +739,51 @@ async def get_leaderboard(ctx):
         embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
         embed.add_field(name="Score", value="\n".join(scores), inline=True)
         await ctx.message.channel.send(embed=embed)
+
+@client.command(pass_context=True, name="cleardailytrivia")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
+async def clear_daily_leaderboard(ctx):
+    now = datetime.datetime.now()
+    redis_client.set('dailyhourend', str(now.hour))
+    redis_client.set('dailyminuteend', str(now.minute))
+
+
+@client.command(pass_context=True, name="dailyleaderboard")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
+async def get_daily_leaderboard(ctx):
+    participants = get_daily_trivialeaderboard()
+    embed = Embed(title="Today's Top 10", description="In Descending Order", color=jiselConf['info_color'])
+    if participants:
+        tag_names = [f"<@!{_row['id']}>" for _row in participants]
+        scores = [str(_row['score']) for _row in participants]
+        embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
+        embed.add_field(name="Score", value="\n".join(scores), inline=True)
+        await ctx.message.channel.send(embed=embed)
+
+
+def get_daily_trivialeaderboard():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            participants = []
+            leaderboard_table = Table('dailyLeaderboard', metadata, autoload=True, autoload_with=conn)
+            select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc(), leaderboard_table.c.lastUpdated)
+            res = conn.execute(select_st)
+            for _row in res:
+                participants.append({
+                    'id': _row[0],
+                    'name': _row[1],
+                    'score': _row[2]
+                })
+            return participants
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
 
 def get_all_time():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
@@ -773,8 +818,10 @@ def upsert_to_trivia_leader_board(discord_id, discord_name, score):
             leaderboard_table = Table('triviaLeaderboard', metadata, autoload=True, autoload_with=conn)
             all_time = Table('allTimeTriviaLeaderboard', metadata, autoload=True, autoload_with=conn)
             update_or_insert_charge_query = f"INSERT INTO pwm.\"triviaLeaderboard\" (\"discord_id\", \"discord_name\", \"score\") VALUES ({discord_id}, \'{discord_name}\', {score}) ON CONFLICT (\"discord_id\") DO UPDATE SET \"score\" = \"triviaLeaderboard\".\"score\" + {score}, \"lastUpdated\" = CURRENT_TIMESTAMP"
+            daily_time_upsert_query = f"INSERT INTO pwm.\"dailyLeaderboard\" (\"discord_id\", \"discord_name\", \"score\") VALUES ({discord_id}, \'{discord_name}\', {score}) ON CONFLICT (\"discord_id\") DO UPDATE SET \"score\" = \"dailyLeaderboard\".\"score\" + {score}, \"lastUpdated\" = CURRENT_TIMESTAMP"
             all_time_upsert_query = f"INSERT INTO pwm.\"allTimeTriviaLeaderboard\" (\"discord_id\", \"discord_name\", \"score\") VALUES ({discord_id}, \'{discord_name}\', {score}) ON CONFLICT (\"discord_id\") DO UPDATE SET \"score\" = \"allTimeTriviaLeaderboard\".\"score\" + {score}, \"lastUpdated\" = CURRENT_TIMESTAMP"
             all_time_result = conn.execute(all_time_upsert_query)
+            daily_result = conn.execute(daily_time_upsert_query)
             result = conn.execute(update_or_insert_charge_query)
             select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc(), leaderboard_table.c.lastUpdated)
             res = conn.execute(select_st)
@@ -873,7 +920,10 @@ async def get_curr_question(ctx):
 @client.event
 async def on_message(message):
     if message.author.id != client.user.id:
-        await main(message)
+        try:
+            await main(message)
+        except Exception as err:
+            print(err)
 
     await client.process_commands(message)
 
@@ -910,7 +960,16 @@ async def ask_a_question(ctx):
         x = random.randint(0, len(all_questions)-1)
         embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds']) if jiselConf['expiration_seconds'] < 100 else str(math.floor(jiselConf['expiration_seconds']/60))} {'seconds' if jiselConf['expiration_seconds'] < 100 else 'minutes'} to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=7506394)
         set_current_question(all_questions[x]['id'])
-        await trivia_channel.send(embed=embed)
+        now = datetime.datetime.now()
+        past_hour = now - datetime.timedelta(hours=1)
+        curr_trivia_message = await trivia_channel.send(embed=embed)
+        print('setting a key for currtriviaexists after asking a question-------------', str(x))
+        redis_client.set('currtriviaexists', str(x))
+        redis_client.set('lastmessageid', str(curr_trivia_message.id))
+        print('setting an expiration after asking a question-------------', str(curr_trivia_message.id))
+        redis_client.expire('currtriviaexists', jiselConf['expiration_seconds'])
+        redis_client.set('lasthour', str(past_hour.hour))
+
 
 @client.event
 async def on_raw_reaction_add(payload):
@@ -1487,6 +1546,26 @@ async def start_trivia(ctx):
             await emoji_success_feedback(ctx.message)
         except:
             await ctx.send("Sorry, something went wrong with starting the trivia.")
+
+@client.command(pass_context=True, name="diffdaily")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
+async def start_diffdaily(ctx):
+    if ctx.message.channel.name == jiselConf['bot_feed_back_channel']['name']:
+        try:
+            redis_client.set('diffdaily', 'yes')
+            await emoji_success_feedback(ctx.message)
+        except:
+            await ctx.send("Sorry, something went wrong with setting Daily Trivia to Different Winner Mode.")
+
+@client.command(pass_context=True, name="samedaily")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
+async def stop_diffdaily(ctx):
+    if ctx.message.channel.name == jiselConf['bot_feed_back_channel']['name']:
+        try:
+            redis_client.set('diffdaily', 'no')
+            await emoji_success_feedback(ctx.message)
+        except:
+            await ctx.send("Sorry, something went wrong with setting Daily Trivia to Same Highest Winner Mode.")
 
 
 def delete_answer_by_id(answer_id):

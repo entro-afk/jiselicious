@@ -192,14 +192,33 @@ async def update_trello_cards_and_time():
                 embed = Embed(title="Weekly Leader Board", description=f"This week's Trivia Leaderboard:\n{stringified_top_3}\n\nCongratulations to <@!{top_3[0]['id']}>!\n 🎉 You have won this week's Trivia.\nA moderator will contact you privately with your prize.\n\n**Keep participating to find out who will be the next Trivia Master of the week!**", color=0x00ff00)
                 embed.set_image(url=jiselConf['trivia_banner_link'])
                 trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
-                await trivia_channel.send("", embed=embed)
+                await trivia_channel.send(embed=embed)
                 clear_trivia_leaderboard()
                 private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
                 embed = Embed(title="Success", description=f"Trivia Leaderboard Cleared", color=0x00ff00)
                 await private_bot_feedback_channel.send(embed=embed)
                 r.set('weekdayend', str(now.weekday()))
                 r.set('hourend', str(now.hour))
-                r.set('minuteend', str(now.minute - 1 if now.minute > 0 else 59))
+                r.set('minuteend', str(now.minute - 1 if now.minute > 31 else 59))
+
+        if now.hour == int(r.get('dailyhourend')) and now.minute == int(r.get('dailyminuteend')):
+            participants = get_daily_trivialeaderboard()
+            english_date = now.strftime("%B %d, %Y")
+            embed = Embed(title="Daily Leader Board", description=f"Daily Trivia Leaderboard Top 10: {english_date}", color=0x00ff00)
+            private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+            if participants:
+                tag_names = [f"<@!{_row['id']}>" for _row in participants]
+                scores = [str(_row['score']) for _row in participants]
+                embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
+                embed.add_field(name="Score", value="\n".join(scores), inline=True)
+                await private_bot_feedback_channel.send(embed=embed)
+            is_diff_winner_mode = r.get('diffdaily').decode("utf-8") == 'yes' if r.get('diffdaily') else None
+            if is_diff_winner_mode:
+                clear_daily_trivia_leaderboard()
+                embed = Embed(title="Success", description=f"Daily Trivia Leaderboard Cleared", color=0x00ff00)
+                await private_bot_feedback_channel.send(embed=embed)
+            r.set('dailyhourend', str(now.hour))
+            r.set('dailyminuteend', str(now.minute - 1 if now.minute > 31 else 59))
 
         print("Less than current minute time before printing minute---------", datetime.datetime.now())
         print('Less than current random minute------', random_minute)
@@ -334,6 +353,30 @@ async def ask_a_question():
                 print('setting an expiration after asking a question-------------', str(curr_trivia_message.id))
                 r.expire('currtriviaexists', jiselConf['expiration_seconds'])
 
+
+def get_daily_trivialeaderboard():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            participants = []
+            leaderboard_table = Table('dailyLeaderboard', metadata, autoload=True, autoload_with=conn)
+            select_st = select([leaderboard_table]).order_by(leaderboard_table.c.score.desc(), leaderboard_table.c.lastUpdated)
+            res = conn.execute(select_st)
+            for _row in res:
+                participants.append({
+                    'id': _row[0],
+                    'name': _row[1],
+                    'score': _row[2]
+                })
+            return participants
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
 def get_trivia_leader_board():
     db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
     db = create_engine(db_string)
@@ -364,6 +407,21 @@ def clear_trivia_leaderboard():
     try:
         with db.connect() as conn:
             delete_query = "DELETE FROM pwm.\"triviaLeaderboard\""
+            res = conn.execute(delete_query)
+            return True
+    except Exception as err:
+        print(err)
+        if conn:
+            conn.close()
+        db.dispose()
+
+def clear_daily_trivia_leaderboard():
+    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
+    db = create_engine(db_string)
+    metadata = MetaData(schema="pwm")
+    try:
+        with db.connect() as conn:
+            delete_query = "DELETE FROM pwm.\"dailyLeaderboard\""
             res = conn.execute(delete_query)
             return True
     except Exception as err:
