@@ -947,29 +947,19 @@ def set_current_question(question_id):
 async def ask_a_question(ctx):
     all_questions = get_questions()
     trivia_channel = get(ctx.guild.text_channels, name=jiselConf['trivia_channel'])
-    if trivia_channel:
-        current_trivia_question_obj = get_current_trivia_question_id()
-        if current_trivia_question_obj:
-            current_trivia_question_id = current_trivia_question_obj['question_id']
-            result_remove_curr_trivia = remove_current_trivia()
-            if result_remove_curr_trivia:
-                private_bot_feedback_channel = get(ctx.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
-                embed = Embed(title=f"Previous Question (ID#{current_trivia_question_id}) Expired", description="A new question has been sent to the trivia channel", color=16426522)
-                await private_bot_feedback_channel.send(embed=embed)
-
-        x = random.randint(0, len(all_questions)-1)
-        embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds']) if jiselConf['expiration_seconds'] < 100 else str(math.floor(jiselConf['expiration_seconds']/60))} {'seconds' if jiselConf['expiration_seconds'] < 100 else 'minutes'} to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=7506394)
-        set_current_question(all_questions[x]['id'])
-        now = datetime.datetime.now()
-        past_hour = now - datetime.timedelta(hours=1)
-        redis_client.set('lasthour', str(past_hour.hour))
-        curr_trivia_message = await trivia_channel.send(embed=embed)
-        print('setting a key for currtriviaexists after asking a question-------------', str(x))
-        redis_client.set('currtriviaexists', str(x))
-        redis_client.set('lastmessageid', str(curr_trivia_message.id))
-        print('setting an expiration after asking a question-------------', str(curr_trivia_message.id))
-        redis_client.expire('currtriviaexists', jiselConf['expiration_seconds'])
-        redis_client.set('lasthour', str(now.hour))
+    x = random.randint(0, len(all_questions)-1)
+    embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds']) if jiselConf['expiration_seconds'] < 100 else str(math.floor(jiselConf['expiration_seconds']/60))} {'seconds' if jiselConf['expiration_seconds'] < 100 else 'minutes'} to answer before the following question expires:", description=f"{all_questions[x]['question']}", color=7506394)
+    set_current_question(all_questions[x]['id'])
+    now = datetime.datetime.now()
+    past_hour = now - datetime.timedelta(hours=1)
+    redis_client.set('lasthour', str(past_hour.hour))
+    curr_trivia_message = await trivia_channel.send(embed=embed)
+    print('setting a key for currtriviaexists after asking a question-------------', str(x))
+    redis_client.set('currtriviaexists', str(x))
+    redis_client.set('lastmessageid', str(curr_trivia_message.id))
+    print('setting an expiration after asking a question-------------', str(curr_trivia_message.id))
+    redis_client.expire('currtriviaexists', jiselConf['expiration_seconds'])
+    redis_client.set('lasthour', str(now.hour))
 
 
 @client.event
