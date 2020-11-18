@@ -968,7 +968,7 @@ async def ask_a_question(ctx):
         redis_client.set('lastmessageid', str(curr_trivia_message.id))
         print('setting an expiration after asking a question-------------', str(curr_trivia_message.id))
         redis_client.expire('currtriviaexists', jiselConf['expiration_seconds'])
-        redis_client.set('lasthour', str(past_hour.hour))
+        redis_client.set('lasthour', str(now.hour))
 
 
 @client.event
