@@ -962,6 +962,7 @@ async def ask_a_question(ctx):
         set_current_question(all_questions[x]['id'])
         now = datetime.datetime.now()
         past_hour = now - datetime.timedelta(hours=1)
+        redis_client.set('lasthour', str(past_hour.hour))
         curr_trivia_message = await trivia_channel.send(embed=embed)
         print('setting a key for currtriviaexists after asking a question-------------', str(x))
         redis_client.set('currtriviaexists', str(x))
