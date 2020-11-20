@@ -26,6 +26,7 @@ import math
 import random
 import redis
 import calendar
+import json
 
 client = commands.Bot(command_prefix='+')
 
@@ -672,9 +673,10 @@ async def handle_trivia_message(message):
                 if message.content.lower() in lower_case_answers:
                     embed = Embed(title="That's correct!", description=f"<:PWM_yes:770642224249045032> Congratulations, <@!{message.author.id}>. You've gained 10 points!", color=4437377)
                     await message.channel.send(embed=embed)
+                    await message.channel.edit(slowmode_delay=0)
                     result_remove_curr_question = remove_current_trivia()
                     if result_remove_curr_question:
-                        embed = Embed(title="Current Question for this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=jiselConf['info_color'])
+                        embed = Embed(title=f"Current Question ID#{current_trivia_question_id} for this hour has been cleared", description=f"Winner was  <@!{message.author.id}>.", color=jiselConf['info_color'])
                         await private_bot_feedback_channel.send(embed=embed)
                         top_ten = upsert_to_trivia_leader_board(message.author.id, message.author.name, 10)
                         embed = Embed(title="Current Top 10", description="In Descending Order", color=jiselConf['info_color'])

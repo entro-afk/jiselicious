@@ -173,6 +173,7 @@ async def update_trello_cards_and_time():
                         embed = Embed(title="Current Question for this hour has expired", description=f"No one was able to correctly answer the expired question.", color=16426522)
                         await private_bot_feedback_channel.send(embed=private_embed)
                         await trivia_channel.send(embed=embed)
+                        await trivia_channel.edit(slowmode_delay=0)
             if trivia_of_hour_msg_id:
                 question_of_the_hour_message = await trivia_channel.fetch_message(int(trivia_of_hour_msg_id))
                 if question_of_the_hour_message:
