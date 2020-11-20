@@ -687,12 +687,13 @@ async def handle_trivia_message(message):
                         await private_bot_feedback_channel.send(embed=embed)
             else:
                 print('Does it even acknowlege that time has expired-------------')
-                private_embed = embed = Embed(title="Current Question for this hour has already expired", description=f"<@!{message.author.id}> tried to answer an expired question.", color=16426522)
+                private_embed = Embed(title=f"Current Question ID#{current_trivia_question_id} for this hour has already expired", description=f"<@!{message.author.id}> tried to answer an expired question.", color=16426522)
                 embed = Embed(title="Current Question for this hour has already expired", description=f"There was no winner. Try again next time!", color=16426522)
                 result_remove_curr_question = remove_current_trivia()
                 if result_remove_curr_question:
                     await message.channel.send(embed=embed)
                     await private_bot_feedback_channel.send(embed=private_embed)
+                    await message.channel.edit(slowmode_delay=0)
 
 
 def get_trivia_leader_board():
