@@ -961,6 +961,13 @@ async def ask_a_question(ctx):
     redis_client.expire('currtriviaexists', jiselConf['expiration_seconds'])
     redis_client.set('lasthour', str(now.hour))
 
+@client.command(pass_context=True, name="dm")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
+async def dm_person(ctx, member: Member, *args):
+    args_message = ctx.message.content.strip(f"+dm <@!{member.id}>")
+    embed = Embed(title="[Automated Message] Congratulations on winning 1st place in today's trivia!", description=args_message.strip(), color=7506394)
+    embed.set_footer(text="Please note that this is an automated message.  If you have any questions, please contact The Carlos or Ida")
+    await member.send(embed=embed)
 
 @client.event
 async def on_raw_reaction_add(payload):
