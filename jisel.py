@@ -968,6 +968,7 @@ async def dm_person(ctx, member: Member, *args):
     embed = Embed(title="[Automated Message] Congratulations on winning 1st place in today's trivia!", description=args_message.strip(), color=7506394)
     embed.set_footer(text="Please note that this is an automated message.  If you have any questions, please contact The Carlos or Ida")
     await member.send(embed=embed)
+    await ctx.author.send(embed=embed)
 
 @client.event
 async def on_raw_reaction_add(payload):
