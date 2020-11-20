@@ -354,6 +354,7 @@ async def ask_a_question():
                 r.set('lastmessageid', str(curr_trivia_message.id))
                 print('setting an expiration after asking a question-------------', str(curr_trivia_message.id))
                 r.expire('currtriviaexists', jiselConf['expiration_seconds'])
+                await trivia_channel.edit(slowmode_delay=jiselConf['slow_mode_trivia'])
 
 
 def get_daily_trivialeaderboard():
