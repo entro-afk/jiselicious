@@ -76,7 +76,7 @@ def get_questions():
             conn.close()
         db.dispose()
 
-trivia_questions = get_questions()
+
 
 def event_handler(msg):
     print("Handler", msg)
@@ -338,6 +338,8 @@ async def ask_a_question():
     trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
     print('asking a question-------------', datetime.datetime.now().time())
     if trivia_channel:
+        trivia_questions = get_questions()
+        print('number of questions----------', str(len(trivia_questions)))
         x = random.randint(0, len(trivia_questions)-1)
         embed = Embed(title=f"It's Trivia Time! You have {str(jiselConf['expiration_seconds']) if jiselConf['expiration_seconds'] < 100 else str(math.floor(jiselConf['expiration_seconds']/60))} {'seconds' if jiselConf['expiration_seconds'] < 100 else 'minutes'} to answer before the following question expires:", description=f"{trivia_questions[x]['question']}", color=7506394)
         curr_question_has_not_expired = r.get('currtriviaexists')
@@ -451,8 +453,6 @@ def get_current_trivia_question_id():
 
 @listener_routine.before_loop
 async def update_jisel_before():
-    global trivia_questions
-    trivia_questions = get_questions()
     await client.wait_until_ready()
 # test token
 # client.run(channelsConf['test_bot_token'])
