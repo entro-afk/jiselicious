@@ -25,6 +25,7 @@ import random
 import redis
 import math
 from discord.ext.tasks import loop
+from dbEngine import db
 
 client = commands.Bot(command_prefix='+')
 
@@ -54,8 +55,6 @@ curr_minute = datetime.datetime.now().minute
 random_minute = random.randint(0, 30)
 
 def get_questions():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -74,7 +73,7 @@ def get_questions():
         print(err)
         if conn:
             conn.close()
-        db.dispose()
+
 
 
 
@@ -179,6 +178,25 @@ async def update_trello_cards_and_time():
                 if question_of_the_hour_message:
                     await question_of_the_hour_message.delete()
                     r.delete('lastmessageid')
+        curr_hangman_has_not_expired = r.get('hangmanexists')
+        if not curr_hangman_has_not_expired:
+            existing_game_embed_id = r.get('hangmanembedid')
+            existing_hangman_word = r.get('hangmanword')
+            if existing_game_embed_id and existing_hangman_word:
+                edit_embed = Embed(title="Save Selaz the Hanging Dev!",
+                                   description=( "No one guessed the word.  The Dev has been hanged. RIP Selaz 👻 Their soul will be used by Soul Hunters everywhere") + "\n\nThe Word was:\n" + existing_hangman_word.decode("utf-8"),
+                                   color=jiselConf['warning_color'])
+                trivia_channel = get(guild.text_channels, name=jiselConf['trivia_channel'])
+                hangman_msg = await trivia_channel.fetch_message(int(existing_game_embed_id))
+                if hangman_msg:
+                    await hangman_msg.channel.send(embed=edit_embed)
+                    await hangman_msg.delete()
+                    await hangman_msg.channel.edit(slowmode_delay=0)
+                    private_bot_feedback_channel = get(hangman_msg.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+                    embed = Embed(title=f"There was a hangman word for this hour.  But no one cleared it. The word was {existing_hangman_word.decode('utf-8')}", color=jiselConf['warning_color'])
+                    await private_bot_feedback_channel.send(embed=embed)
+                    r.delete('hangmanembedid')
+                    r.delete('hangmanword')
 
         if now.weekday() == int(r.get('weekdayend')) and now.hour == int(r.get('hourend')) and now.minute == int(r.get('minuteend')):
             top_3 = get_trivia_leader_board()
@@ -245,8 +263,6 @@ async def update_trello_cards_and_time():
 
 
 async def update_time():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
 
     try:
@@ -277,13 +293,11 @@ async def update_time():
         print(err)
         if conn:
             conn.close()
-        db.dispose()
+
 
 
 
 def set_current_question(question_id):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -294,11 +308,9 @@ def set_current_question(question_id):
         print(err)
         if conn:
             conn.close()
-        db.dispose()
+
 
 def get_question_by_id(question_id):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -315,11 +327,9 @@ def get_question_by_id(question_id):
         print(err)
         if conn:
             conn.close()
-        db.dispose()
+
 
 def remove_current_trivia():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -332,7 +342,7 @@ def remove_current_trivia():
         print(err)
         if conn:
             conn.close()
-        db.dispose()
+
 
 async def ask_a_question():
     guild = client.get_guild(jiselConf['guild_id'])
@@ -359,8 +369,6 @@ async def ask_a_question():
 
 
 def get_daily_trivialeaderboard():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -379,11 +387,9 @@ def get_daily_trivialeaderboard():
         print(err)
         if conn:
             conn.close()
-        db.dispose()
+
 
 def get_trivia_leader_board():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -402,11 +408,9 @@ def get_trivia_leader_board():
         print(err)
         if conn:
             conn.close()
-        db.dispose()
+
 
 def clear_trivia_leaderboard():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -417,11 +421,9 @@ def clear_trivia_leaderboard():
         print(err)
         if conn:
             conn.close()
-        db.dispose()
+
 
 def clear_daily_trivia_leaderboard():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -432,11 +434,9 @@ def clear_daily_trivia_leaderboard():
         print(err)
         if conn:
             conn.close()
-        db.dispose()
+
 
 def get_current_trivia_question_id():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -450,7 +450,7 @@ def get_current_trivia_question_id():
         print(err)
         if conn:
             conn.close()
-        db.dispose()
+
 
 
 @listener_routine.before_loop

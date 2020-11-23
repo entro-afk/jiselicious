@@ -27,6 +27,7 @@ import random
 import redis
 import calendar
 import json
+from dbEngine import db
 
 client = commands.Bot(command_prefix='+')
 
@@ -53,7 +54,130 @@ scope = ['https://spreadsheets.google.com/feeds',
 credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog'], scope)  # Your json file here
 
 gc = gspread.authorize(credentials)
+possible_words = ["Gate of Wraiths", "Ghostlord", "Massacre", "Lord of Shadow", "Wraith Factory", "Exotic Witch", "Cycle Master", "Dead Figure yang", "Crypt of Shadows", "wraith tower", "shadowmaster", "apocalypse valley", "garuda", "wuxing beast", "viperlord", "hellstallion", "treasure cave", "pathetic linus", "tempest", "heaven or hell", "brahma", "behemot", "netherworld", "peachqueen", "hellking", "ethereal abode", "ether fairy", "lunar envoy", "hobble ox", "black kraken", "robb", "leviathan", "magic ruins", "felbreak tower", "frost frontier", "frost dragon", "frost twins", "moonfall arena", "molten gate", "desolator", "stargale", "frozen miracle", "devil witch", "windtalker", "annihilator", "grimemouth", "mount spirit", "thunderbolt", "rainbow jade", "cucurbit", "flame rider", "earthstrider", "oak spirit", "spitfire", "goblin", "siren", "jungle wyvern", "monkey king", "aeriola", "nine tails", "nezha", "gigi", "poker master", "huggles", "crystal lava", "froggy", "necrocanine", "moon rabbit", "guenhwyvar", "boobear", "plum cat", "flying piggy", "hercules", "firephoenix", "lightning chain", "rain of thorns", "healing water", "flame impact", "blade barrage", "devotion", "fire impact", "earth puppet", "control removal", "leaf strike", "quid pro quo", "wind manipulation", "fatal curse", "elecfrosity", "armillary sash", "gigi's might", "poker strike"]
 
+
+class HangmanGame:
+    def __init__(self):
+        self.game_embed = None
+        self.in_game = False
+        self.word = ""
+        self.guessed = []
+        self.letters_guessed = []
+        self.wrongs = 0
+        self.words_guessed = []
+
+    def get_descriptions(self):
+        return "```" \
+               + "|‾‾‾‾‾‾|   \n|     " \
+               + ("🎩" if self.wrongs > 0 else " ") \
+               + "   \n|     " \
+               + ("😟" if self.wrongs > 1 else " ") \
+               + "   \n|     " \
+               + ("👕" if self.wrongs > 2 else " ") \
+               + "   \n|     " \
+               + ("🩳" if self.wrongs > 3 else " ") \
+               + "   \n|    " \
+               + ("👞👞" if self.wrongs > 4 else " ") \
+               + "   \n|     \n|__________\n\n" \
+               + " ".join([letter if letter in self.guessed else "_" for letter in list(self.word)]) \
+               + "```"
+
+    async def game_over(self, win, winner=None):
+        self.in_game = False
+
+        if win:
+            edit_embed = Embed(title="Save Selaz the Hanging Dev!",
+                               description=f"Congratulations on saving Selaz, Heroic Seeker <@!{winner['id']}>!\nLong live the Gilded Age of Dirt and Paperclip Stones!" + "\n\nThe word was:\n" + self.word,
+                               color=jiselConf['soft_green'])
+            await self.game_embed.channel.send(embed=edit_embed)
+            await self.game_embed.channel.edit(slowmode_delay=0)
+            private_bot_feedback_channel = get(self.game_embed.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+            embed = Embed(title=f"There was a hangman word for this hour.  It has been cleared. The word was {self.word}",
+                          description=f"Winner was  <@!{winner['id']}>.", color=jiselConf['info_color'])
+            await private_bot_feedback_channel.send(embed=embed)
+            top_ten = upsert_to_trivia_leader_board(winner['id'], winner['name'], 10)
+            embed = Embed(title="Current Top 10", description="In Descending Order", color=jiselConf['info_color'])
+            tag_names = [f"<@!{_row['id']}>" for _row in top_ten]
+            scores = [str(_row['score']) for _row in top_ten]
+            embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
+            embed.add_field(name="Score", value="\n".join(scores), inline=True)
+            await private_bot_feedback_channel.send(embed=embed)
+        else:
+            existing_game_embed_id = redis_client.get('hangmanembedid')
+            existing_hangman_word = redis_client.get('hangmanword')
+            if existing_game_embed_id and existing_hangman_word:
+                edit_embed = Embed(title="Save Selaz the Hanging Dev!",
+                                   description=( "No one guessed the word.  The Dev has been hanged. RIP Selaz 👻 \nTheir soul will be used by Soul Hunters everywhere.") + "\n\nThe Word was:\n" + existing_hangman_word.decode("utf-8"),
+                                   color=jiselConf['warning_color'])
+                await self.game_embed.edit(embed=edit_embed)
+                await self.game_embed.channel.edit(slowmode_delay=0)
+                private_bot_feedback_channel = get(self.game_embed.guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
+                embed = Embed(title=f"There was a hangman word for this hour.  But no one cleared it. The word was {existing_hangman_word.decode('utf-8')}", color=jiselConf['warning_color'])
+                await private_bot_feedback_channel.send(embed=embed)
+        redis_client.delete('hangmanembedid')
+        redis_client.delete('hangmanword')
+        redis_client.delete('hangmanexists')
+        redis_client.delete('lasttriviawinnerid')
+        redis_client.delete('lasttrivianame')
+
+        self.__init__()
+
+    async def new_game(self, msg):
+        self.__init__()
+        redis_client.delete('hangmanembedid')
+        redis_client.delete('hangmanword')
+        redis_client.delete('hangmanexists')
+        self.in_game = True
+        self.word = possible_words[math.floor(random.randint(0, len(possible_words)))].upper()
+        self.guessed = []
+        self.wrongs = 0
+
+        embed = Embed(title="Save The Hanging Dev!", description=self.get_descriptions(), color=jiselConf['info_color'])
+        embed.add_field(name='Letters Guessed', value='\u200b')
+        embed.add_field(name='Words Guessed', value='\u200b')
+        embed.add_field(name='How To Play', value="Try to guess the letters that complete this puzzle or guess the whole puzzle.  Other players may guess the whole puzzle but only the winner of the Last Trivia Question can guess letters.", inline=False)
+        redis_client.set('hangmanexists', 1)
+        redis_client.expire('hangmanexists', jiselConf['expiration_seconds'])
+        redis_client.set('hangmanword', hangman.word)
+        self.game_embed = await msg.channel.send(embed=embed)
+        redis_client.set('hangmanembedid', self.game_embed.id)
+        if "'" in self.word:
+            await self.make_guess("'")
+        if " " in self.word:
+            await self.make_guess(" ")
+        await self.game_embed.channel.edit(slowmode_delay=5)
+
+    async def make_guess(self, letter):
+        if letter not in self.guessed and letter not in self.words_guessed:
+            self.guessed.append(letter)
+            if len(letter) == 1:
+                self.letters_guessed.append(letter)
+            elif len(letter) > 1:
+                self.words_guessed.append(letter)
+
+            if letter not in self.word:
+                self.wrongs += 1
+
+                if self.wrongs == 6:
+                    await self.game_over(win=False)
+            elif "_" not in [_letter if _letter in self.guessed else "_" for _letter in list(self.word)]:
+                previous_winner_id = redis_client.get('lasttriviawinnerid')
+                previous_winner_name = redis_client.get('lasttrivianame')
+                await self.game_over(win=True, winner={'id': int(previous_winner_id), 'name': previous_winner_name.decode("utf-8")})
+
+        if redis_client.get('hangmanexists'):
+            edit_embed = Embed(title="Save The Hanging Dev!", description=self.get_descriptions(), color=jiselConf['info_color'])
+            edit_embed.add_field(name='Letters Guessed', value='\u200b' if len(self.letters_guessed) == 0 else " ".join(['\u200b' if _letter == " " else _letter for _letter in self.letters_guessed]))
+            edit_embed.add_field(name='Words Guessed', value='\u200b' if len(self.words_guessed) == 0 else "\n".join(self.words_guessed))
+            edit_embed.add_field(name='How To Play', value="Try to guess the letters that complete this puzzle or guess the whole puzzle.  Other players may guess the whole puzzle but only the winner of the Last Trivia Question can guess letters.", inline=False)
+            msg_channel = self.game_embed.channel
+            await self.game_embed.delete()
+            new_msg = await msg_channel.send(embed=edit_embed)
+            self.game_embed = new_msg
+            redis_client.set('hangmanembedid', self.game_embed.id)
+
+hangman = HangmanGame()
 
 async def emoji_success_feedback(message):
     emoji = get(client.emojis, name='yes')
@@ -135,9 +259,6 @@ async def find_code_in_pics(ctx, event_code):
 
 
 def get_charge(user_id):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=
-    jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
 
     try:
@@ -154,8 +275,6 @@ def get_charge(user_id):
 
 
 def update_charge(user_id, charge):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     hoster_name = client.get_user(user_id).name
 
     with db.connect() as conn:
@@ -273,8 +392,6 @@ async def create_time_channel(ctx, timezone_for_person, *args):
     }
     staff_category = get(ctx.guild.categories, name="STAFF")
     new_time_channel = await guild.create_voice_channel(channel_name, overwrites=overwrite, category=staff_category or ctx.channel.category)
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
 
     try:
@@ -293,8 +410,6 @@ async def create_time_channel(ctx, timezone_for_person, *args):
 
 @client.command(pass_context=True, name='logshome')
 async def get_homestead_alarms_log(ctx):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string, echo=True)
     metadata = MetaData(schema="homesteadProduction")
 
     with db.connect() as conn:
@@ -363,8 +478,6 @@ async def handle_request_event(message):
         board = trello_client.get_board(jiselConf['trello']['board_id'])
         request_list = board.get_list(jiselConf['trello']['list_id'])
         new_card = request_list.add_card(message.author.nick or message.author.name, message.content)
-        db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-        db = create_engine(db_string)
         metadata = MetaData(schema="pwm")
         
         try:
@@ -604,8 +717,6 @@ async def list_events_today(ctx, member: Member = None, day=""):
 
 
 def get_owned_characters_dungeons_items_needed_for_day(day, characters_owned):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -633,13 +744,36 @@ def get_owned_characters_dungeons_items_needed_for_day(day, characters_owned):
         db.dispose()
 
 
+
+@client.command(pass_context=True, name="forcehangman")
+@commands.has_any_role('Jiselicious', 'Assistant Admin')
+async def force_hangman(ctx):
+    await hangman.new_game(ctx.message)
+
+async def handle_hangman(message):
+    message.content = re.sub("’|’|'|‘", "'", message.content.strip())
+    curr_hangman_has_not_expired = redis_client.get('hangmanexists')
+    if curr_hangman_has_not_expired and message.channel.name == jiselConf['trivia_channel']:
+        previous_winner_id = redis_client.get('lasttriviawinnerid')
+        if message.content.strip() != hangman.word and len(message.content.strip()) == 1:
+            if previous_winner_id and int(previous_winner_id) == message.author.id:
+                await hangman.make_guess(message.content.strip().upper())
+            else:
+                warning_embed = Embed(title="\u200b", description=f"<@!{message.author.id}>, only winners of the previous question can guess letters.  You may guess the whole word for a point steal and save Selaz the Hanging Dev.", color=jiselConf['warning_color'])
+                await message.channel.send(embed=warning_embed)
+        elif message.content.strip().upper() == hangman.word:
+            await hangman.game_over(win=True, winner={'id': message.author.id, 'name': message.author.name})
+        else:
+            if previous_winner_id and int(previous_winner_id) == message.author.id:
+                await hangman.make_guess(message.content.strip().upper())
+
 async def main(message):
     await asyncio.gather(
         handle_complete_events(message),
         handle_request_event(message),
         handle_bug_report(message),
         handle_trivia_message(message),
-        handle_announcement(message)
+        handle_announcement(message),
     )
 
 async def handle_announcement(message):
@@ -654,8 +788,9 @@ async def handle_announcement(message):
             await message.delete()
 
 async def handle_trivia_message(message):
-    message.content = re.sub("’|’|'|‘", "'", message.content)
+    message.content = re.sub("’|’|'|‘", "'", message.content.strip())
     if message.channel.name == jiselConf['trivia_channel']:
+        await handle_hangman(message)
         print('realized that this is the trivia channel------------')
         current_trivia_question_obj = get_current_trivia_question_id()
         if current_trivia_question_obj:
@@ -671,6 +806,8 @@ async def handle_trivia_message(message):
                 answers = get_table_answers(current_trivia_question_id, None)
                 lower_case_answers = [answer_row['answer'].lower() for answer_row in answers]
                 if message.content.lower() in lower_case_answers:
+                    redis_client.set('lasttriviawinnerid', message.author.id)
+                    redis_client.set('lasttrivianame', message.author.name)
                     embed = Embed(title="That's correct!", description=f"<:PWM_yes:770642224249045032> Congratulations, <@!{message.author.id}>. You've gained 10 points!", color=4437377)
                     await message.channel.send(embed=embed)
                     await message.channel.edit(slowmode_delay=0)
@@ -685,6 +822,9 @@ async def handle_trivia_message(message):
                         embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
                         embed.add_field(name="Score", value="\n".join(scores), inline=True)
                         await private_bot_feedback_channel.send(embed=embed)
+                    random_minute = random.randint(0, 2)
+                    if random_minute == 0:
+                        await hangman.new_game(message)
             else:
                 print('Does it even acknowlege that time has expired-------------')
                 private_embed = Embed(title=f"Current Question ID#{current_trivia_question_id} for this hour has already expired", description=f"<@!{message.author.id}> tried to answer an expired question.", color=16426522)
@@ -697,8 +837,6 @@ async def handle_trivia_message(message):
 
 
 def get_trivia_leader_board():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -765,8 +903,6 @@ async def get_daily_leaderboard(ctx):
 
 
 def get_daily_trivialeaderboard():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -789,8 +925,6 @@ def get_daily_trivialeaderboard():
 
 
 def get_all_time():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -812,8 +946,6 @@ def get_all_time():
         db.dispose()
 
 def upsert_to_trivia_leader_board(discord_id, discord_name, score):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -843,8 +975,6 @@ def upsert_to_trivia_leader_board(discord_id, discord_name, score):
 
 
 def remove_current_trivia():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -860,8 +990,6 @@ def remove_current_trivia():
 
 
 def clear_trivia_leaderboard():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -884,8 +1012,6 @@ async def clear_leaderboard(ctx):
 
 
 def get_current_trivia_question_id():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -931,8 +1057,6 @@ async def on_message(message):
     await client.process_commands(message)
 
 def set_current_question(question_id):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -956,6 +1080,9 @@ async def ask_a_question(ctx):
     now = datetime.datetime.now()
     past_hour = now - datetime.timedelta(hours=1)
     redis_client.set('lasthour', str(past_hour.hour))
+    redis_client.delete('hangmanembedid')
+    redis_client.delete('hangmanword')
+    redis_client.delete('hangmanexists')
     curr_trivia_message = await trivia_channel.send(embed=embed)
     print('setting a key for currtriviaexists after asking a question-------------', str(x))
     redis_client.set('currtriviaexists', str(x))
@@ -963,6 +1090,8 @@ async def ask_a_question(ctx):
     print('setting an expiration after asking a question-------------', str(curr_trivia_message.id))
     redis_client.expire('currtriviaexists', jiselConf['expiration_seconds'])
     redis_client.set('lasthour', str(now.hour))
+    await trivia_channel.edit(slowmode_delay=jiselConf['slow_mode_trivia'])
+
 
 @client.command(pass_context=True, name="dm")
 @commands.has_any_role('Jiselicious', 'Assistant Admin')
@@ -978,8 +1107,6 @@ async def on_raw_reaction_add(payload):
     channel = client.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
     if payload.emoji.name == jiselConf['charge_emoji_name'] and channel.name in jiselConf['event_request_channel'] and ("Server:".upper() in message.content.upper() or message.content.upper().startswith("Server".upper())):
-        db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-        db = create_engine(db_string)
         metadata = MetaData(schema="pwm")
         hoster_name = client.get_user(payload.user_id).name
         num_codes = find_number_of_codes_needed(message)
@@ -1136,9 +1263,6 @@ async def get_all_veteran_hosters(ctx):
     await ctx.send(embed=embed)
 @client.command(pass_context=True, name="server")
 async def assign_hoster_server_db(ctx, hoster_tag: Member, server_name):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
-
     with db.connect() as conn:
         update_or_insert_server_query = f"INSERT INTO pwm.\"hosterServerMapping\" (\"discordID\", \"server\") VALUES ({hoster_tag.id}, \'{server_name}\') ON CONFLICT (\"discordID\") DO UPDATE SET \"server\" = '{server_name}'"
         result = conn.execute(update_or_insert_server_query)
@@ -1186,8 +1310,6 @@ async def get_hoster_server(ctx, hoster_tag: Member):
 
 
 def get_server(user_id):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
 
     try:
@@ -1302,8 +1424,6 @@ async def get_answers_to_question(ctx, *args):
         print(err)
 
 def get_question_by_id(question_id):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -1320,8 +1440,6 @@ def get_question_by_id(question_id):
         db.dispose()
 
 def get_id_of_question(question):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -1341,8 +1459,6 @@ def get_id_of_question(question):
 
 
 def get_table_answers(question_id, question):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -1402,9 +1518,6 @@ async def create_question(ctx, *args):
 
 def create_db_questions(question, items, answers_to_question):
     try:
-        db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=
-        jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-        db = create_engine(db_string)
         metadata = MetaData(schema="pwm")
 
         with db.connect() as conn:
@@ -1466,8 +1579,6 @@ async def add_answers_question(ctx, *args):
         print(err)
 
 def add_to_db_question(question_id, question, items, question_answers):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
 
     try:
@@ -1503,8 +1614,6 @@ def add_to_db_question(question_id, question, items, question_answers):
         db.dispose()
 
 def delete_question_by_id(question_id):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -1571,8 +1680,6 @@ async def stop_diffdaily(ctx):
 
 
 def delete_answer_by_id(answer_id):
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
@@ -1613,8 +1720,6 @@ async def get_questions_table(ctx):
         await ctx.message.channel.send(embed=embed)
 
 def get_questions():
-    db_string = "postgres+psycopg2://postgres:{password}@{host}:{port}/postgres".format(username='root', password=jiselConf['postgres']['pwd'], host=jiselConf['postgres']['host'], port=jiselConf['postgres']['port'])
-    db = create_engine(db_string)
     metadata = MetaData(schema="pwm")
     try:
         with db.connect() as conn:
