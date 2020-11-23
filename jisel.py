@@ -774,6 +774,7 @@ async def main(message):
         handle_bug_report(message),
         handle_trivia_message(message),
         handle_announcement(message),
+        handle_hangman(message)
     )
 
 async def handle_announcement(message):
@@ -790,7 +791,6 @@ async def handle_announcement(message):
 async def handle_trivia_message(message):
     message.content = re.sub("’|’|'|‘", "'", message.content.strip())
     if message.channel.name == jiselConf['trivia_channel']:
-        await handle_hangman(message)
         print('realized that this is the trivia channel------------')
         current_trivia_question_obj = get_current_trivia_question_id()
         if current_trivia_question_obj:
