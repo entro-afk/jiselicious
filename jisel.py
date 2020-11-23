@@ -167,7 +167,7 @@ class HangmanGame:
                 await self.game_over(win=True, winner={'id': int(previous_winner_id), 'name': previous_winner_name.decode("utf-8")})
 
         if redis_client.get('hangmanexists'):
-            edit_embed = Embed(title="Save The Hanging Dev!", description=self.get_descriptions(), color=jiselConf['info_color'])
+            edit_embed = Embed(title="Save Selaz the Hanging Dev!", description=self.get_descriptions(), color=jiselConf['info_color'])
             edit_embed.add_field(name='Letters Guessed', value='\u200b' if len(self.letters_guessed) == 0 else " ".join(['\u200b' if _letter == " " else _letter for _letter in self.letters_guessed]))
             edit_embed.add_field(name='Words Guessed', value='\u200b' if len(self.words_guessed) == 0 else "\n".join(self.words_guessed))
             edit_embed.add_field(name='How To Play', value="Try to guess the letters that complete this puzzle or guess the whole puzzle.  Other players may guess the whole puzzle but only the winner of the Last Trivia Question can guess letters.", inline=False)
