@@ -14,7 +14,7 @@ from sqlalchemy import *
 import json
 import os
 import datetime
-from discord import File, Member, Role, PermissionOverwrite, ChannelType, Embed
+from discord import File, Member, Role, PermissionOverwrite, ChannelType, Embed, TextChannel
 import requests
 import time
 import asyncio
@@ -1105,6 +1105,12 @@ async def dm_person(ctx, member: Member, *args):
     await member.send(embed=embed)
     await ctx.author.send(embed=embed)
 
+@client.command(pass_context=True, name="post")
+async def post_on_channel(ctx, target_channel: TextChannel, *args):
+    args_message = ctx.message.content.strip(f"+post <#{target_channel.id}>")
+    await target_channel.send(args_message, embed=ctx.message.embeds and ctx.message.embeds[0] or None)
+    for _attachment in ctx.message.attachments:
+        await target_channel.send(_attachment.url)
 @client.event
 async def on_raw_reaction_add(payload):
     channel = client.get_channel(payload.channel_id)
