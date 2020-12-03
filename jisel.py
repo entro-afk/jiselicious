@@ -785,7 +785,13 @@ async def handle_announcement(message):
                 if "photos/a." in msg:
                     split_msg[i] = re.sub('\?type=3', '', msg)
             reformed_msg = " ".join(split_msg)
+            image_msg = None
+            if "scontent-iad3" in reformed_msg and "\n\n" in reformed_msg:
+                post_and_image_msg_arr = reformed_msg.split("\n\n")
+                reformed_msg, image_msg = post_and_image_msg_arr[0], post_and_image_msg_arr[1]
             await message.channel.send(reformed_msg)
+            if image_msg:
+                await message.channel.send(image_msg)
             await message.delete()
 
 async def handle_trivia_message(message):
@@ -1107,7 +1113,7 @@ async def dm_person(ctx, member: Member, *args):
 
 @client.command(pass_context=True, name="post")
 async def post_on_channel(ctx, target_channel: TextChannel, *args):
-    args_message = ctx.message.content.strip(f"+post <#{target_channel.id}>")
+    args_message = ctx.message.content.lstrip(f"+post <#{target_channel.id}>")
     await target_channel.send(args_message, embed=ctx.message.embeds and ctx.message.embeds[0] or None)
     for _attachment in ctx.message.attachments:
         await target_channel.send(_attachment.url)
