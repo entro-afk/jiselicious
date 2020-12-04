@@ -786,7 +786,7 @@ async def handle_announcement(message):
                     split_msg[i] = re.sub('\?type=3', '', msg)
             reformed_msg = " ".join(split_msg)
             image_msg = None
-            if "scontent-iad3" in reformed_msg and "\n\n" in reformed_msg:
+            if "scontent" in reformed_msg and "\n\n" in reformed_msg:
                 post_and_image_msg_arr = reformed_msg.split("\n\n")
                 reformed_msg, image_msg = post_and_image_msg_arr[0], post_and_image_msg_arr[1]
             await message.channel.send(reformed_msg)
