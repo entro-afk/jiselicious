@@ -242,6 +242,8 @@ async def update_trello_cards_and_time():
                 for _id in jiselConf['perms_magic']:
                     notification_tags.append(f"<@!{str(_id)}>")
                 await private_bot_feedback_channel.send(content=" ".join(notification_tags), embed=embed)
+            r.set('dailyhourend', str(now.hour))
+            r.set('dailyminuteend', str(now.minute - 1 if now.minute > 41 else 59))
 
         print("Less than current minute time before printing minute---------", datetime.datetime.now())
         print('Less than current random minute------', random_minute)
