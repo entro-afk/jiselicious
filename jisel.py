@@ -831,9 +831,6 @@ async def handle_trivia_message(message):
                     random_minute = random.randint(0, 2)
                     if random_minute == 0:
                         await hangman.new_game(message)
-                    else:
-                        redis_client.delete('lasttriviawinnerid')
-                        redis_client.delete('lasttrivianame')
             else:
                 print('Does it even acknowlege that time has expired-------------')
                 private_embed = Embed(title=f"Current Question ID#{current_trivia_question_id} for this hour has already expired", description=f"<@!{message.author.id}> tried to answer an expired question.", color=16426522)
