@@ -54,7 +54,7 @@ scope = ['https://spreadsheets.google.com/feeds',
 credentials = ServiceAccountCredentials.from_json_keyfile_name(jiselConf['goog'], scope)  # Your json file here
 
 gc = gspread.authorize(credentials)
-possible_words = ["Gate of Wraiths", "Ghostlord", "Massacre", "Lord of Shadow", "Wraith Factory", "Exotic Witch", "Cycle Master", "Dead Figure yang", "Crypt of Shadows", "wraith tower", "shadowmaster", "apocalypse valley", "garuda", "wuxing beast", "viperlord", "hellstallion", "treasure cave", "pathetic linus", "tempest", "heaven or hell", "brahma", "behemot", "netherworld", "peachqueen", "hellking", "ethereal abode", "ether fairy", "lunar envoy", "hobble ox", "black kraken", "robb", "leviathan", "magic ruins", "felbreak tower", "frost frontier", "frost dragon", "frost twins", "moonfall arena", "molten gate", "desolator", "stargale", "frozen miracle", "devil witch", "windtalker", "annihilator", "grimemouth", "mount spirit", "thunderbolt", "rainbow jade", "cucurbit", "flame rider", "earthstrider", "oak spirit", "spitfire", "goblin", "siren", "jungle wyvern", "monkey king", "aeriola", "nine tails", "nezha", "gigi", "poker master", "huggles", "crystal lava", "froggy", "necrocanine", "moon rabbit", "guenhwyvar", "boobear", "plum cat", "flying piggy", "hercules", "firephoenix", "lightning chain", "rain of thorns", "healing water", "flame impact", "blade barrage", "devotion", "fire impact", "earth puppet", "control removal", "leaf strike", "quid pro quo", "wind manipulation", "fatal curse", "elecfrosity", "armillary sash", "gigi's might", "poker strike"]
+possible_words = ["Gate of Wraiths", "Ghostlord", "Massacre", "Lord of Shadow", "Wraith Factory", "Exotic Witch", "Cycle Master", "Dead Figure yang", "Crypt of Shadows", "wraith tower", "shadowmaster", "apocalypse valley", "garuda", "wuxing beast", "viperlord", "hellstallion", "treasure cave", "pathetic linus", "tempest", "heaven or hell", "brahma", "behemoth", "netherworld", "peachqueen", "hellking", "ethereal abode", "ether fairy", "lunar envoy", "hobble ox", "black kraken", "robb", "leviathan", "magic ruins", "felbreak tower", "frost frontier", "frost dragon", "frost twins", "moonfall arena", "molten gate", "desolator", "stargale", "frozen miracle", "devil witch", "windtalker", "annihilator", "grimemouth", "mount spirit", "thunderbolt", "rainbow jade", "cucurbit", "flame rider", "earthstrider", "oak spirit", "spitfire", "goblin", "siren", "jungle wyvern", "monkey king", "aeriola", "nine tails", "nezha", "gigi", "poker master", "huggles", "crystal lava", "froggy", "necrocanine", "moon rabbit", "guenhwyvar", "boobear", "plum cat", "flying piggy", "hercules", "firephoenix", "lightning chain", "rain of thorns", "healing water", "flame impact", "blade barrage", "devotion", "fire impact", "earth puppet", "control removal", "leaf strike", "quid pro quo", "wind manipulation", "fatal curse", "elecfrosity", "armillary sash", "gigi's might", "poker strike"]
 
 
 class HangmanGame:
@@ -1661,7 +1661,6 @@ async def stop_trivia(ctx):
 
 
 @client.command(pass_context=True, name="start")
-@commands.has_any_role('Jiselicious', 'Assistant Admin')
 async def start_trivia(ctx):
     if ctx.message.channel.name == jiselConf['bot_feed_back_channel']['name']:
         try:
