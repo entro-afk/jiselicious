@@ -220,30 +220,6 @@ async def update_trello_cards_and_time():
                 r.set('hourend', str(now.hour))
                 r.set('minuteend', str(now.minute - 1 if now.minute > 31 else 59))
 
-        if now.hour == int(r.get('dailyhourend')) and now.minute == int(r.get('dailyminuteend')):
-            participants = get_daily_trivialeaderboard()
-            english_date = now.strftime("%B %d, %Y")
-            embed = Embed(title="Daily Leader Board", description=f"Daily Trivia Leaderboard Top 10: {english_date}", color=0x00ff00)
-            private_bot_feedback_channel = get(guild.text_channels, name=jiselConf['bot_feed_back_channel']['name'])
-            if participants:
-                tag_names = [f"<@!{_row['id']}>" for _row in participants]
-                scores = [str(_row['score']) for _row in participants]
-                embed.add_field(name="Seeker", value="\n".join(tag_names), inline=True)
-                embed.add_field(name="Score", value="\n".join(scores), inline=True)
-                notification_tags = []
-                for _id in jiselConf['perms_magic']:
-                    notification_tags.append(f"<@!{str(_id)}>")
-                await private_bot_feedback_channel.send(content=" ".join(notification_tags), embed=embed)
-            is_diff_winner_mode = r.get('diffdaily').decode("utf-8") == 'yes' if r.get('diffdaily') else None
-            if is_diff_winner_mode:
-                clear_daily_trivia_leaderboard()
-                embed = Embed(title="Success", description=f"Daily Trivia Leaderboard Cleared", color=0x00ff00)
-                notification_tags = []
-                for _id in jiselConf['perms_magic']:
-                    notification_tags.append(f"<@!{str(_id)}>")
-                await private_bot_feedback_channel.send(content=" ".join(notification_tags), embed=embed)
-            r.set('dailyhourend', str(now.hour))
-            r.set('dailyminuteend', str(now.minute - 1 if now.minute > 41 else 59))
 
         print("Less than current minute time before printing minute---------", datetime.datetime.now())
         print('Less than current random minute------', random_minute)
