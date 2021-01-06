@@ -781,55 +781,45 @@ async def main(message):
     )
 
 async def handle_announcement(message):
-    if message.channel.name in [jiselConf['announcements_channel'], 'zapier-channel']:
+    if message.channel.name in jiselConf['announcements_channels']:
         split_msg = message.content.split(" ")
-        if message.content.startswith("From Zapier"):
-            if "video.php" in message.content:
-                description = message.content.lstrip("From Zapier\n").split("Break Content")[0]
-                description = "\n".join([f"<{line}>" if line.startswith("https") else line for line in description.split("\n")])
-                video_tag = message.content.split("\n")[-1]
-                video_part = getdownlink(video_tag)
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(video_part) as resp:
-                        buffer = BytesIO(await resp.read())
-                        video_name = video_part.lstrip("https://").split("?")[0]
-                        await message.channel.send(description, file=File(buffer, video_name), embed=None)
-            elif "scontent" in message.content:
-                description = message.content.lstrip("From Zapier\n").split("Break Content")[0]
-                description = "\n".join([f"<{line}>" if line.startswith("https") else line for line in description.split("\n")])
-                image_line = [line for line in message.content.split("\n") if "scontent" in line]
-                if image_line:
-                    image_line = image_line[0]
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(image_line) as resp:
-                        buffer = BytesIO(await resp.read())
+        if "video-iad3" in message.content:
+            description = message.content
+            description = "\n".join(
+                [f"<{line}>" if line.startswith("https") else line for line in description.split("\n") if "video-iad3" not in line and "scontent" not in line])
+            video_tag = [line for line in message.content.split("\n") if "video-iad3" in line]
+            if video_tag:
+                video_tag = video_tag[0]
+            image_line = [line for line in message.content.split("\n") if "scontent" in line]
+            if image_line:
+                image_line = image_line[0]
+            async with aiohttp.ClientSession() as session:
+                async with session.get(video_tag) as resp_video:
+                    async with session.get(image_line) as resp_image:
+                        buffer_video = BytesIO(await resp_video.read())
+                        buffer_image = BytesIO(await resp_image.read())
+                        video_name = video_tag.lstrip("https://").split("?")[0]
                         image_name = image_line.lstrip("https://").split("?")[0]
-                        await message.channel.send(description, file=File(buffer, image_name), embed=None)
-            else:
-                description = message.content.lstrip("From Zapier\n").split("Break Content")[0]
-                description = "\n".join([f"<{line}>" if line.startswith("https") else line for line in description.split("\n")])
+                        await message.channel.send(description, files=[File(buffer_video, video_name), File(buffer_image, image_name)])
+        elif "scontent" in message.content:
+            description = message.content
+            description = "\n".join(
+                [f"<{line}>" if line.startswith("https") else line for line in description.split("\n") if "scontent" not in line])
+            image_line = [line for line in message.content.split("\n") if "scontent" in line]
+            if image_line:
+                image_line = image_line[0]
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image_line) as resp:
+                    buffer = BytesIO(await resp.read())
+                    image_name = image_line.lstrip("https://").split("?")[0]
+                    await message.channel.send(description, file=File(buffer, image_name), embed=None)
+        else:
+            description = message.content.lstrip("From Zapier\n").split("Break Content")[0]
+            description = "\n".join(
+                [f"<{line}>" if line.startswith("https") else line for line in description.split("\n")])
 
-                await message.channel.send(description, embed=None)
-            await message.delete()
-        elif "photos/a." in message.content and "?type=3" in message.content and not message.embeds:
-            for i, msg in enumerate(split_msg):
-                if "photos/a." in msg:
-                    split_msg[i] = re.sub('\?type=3', '', msg)
-            reformed_msg = " ".join(split_msg)
-            image_msg = None
-            if "scontent" in reformed_msg and "\n\n" in reformed_msg:
-                post_and_image_msg_arr = reformed_msg.split("\n\n")
-                reformed_msg, image_msg = post_and_image_msg_arr[0], post_and_image_msg_arr[1]
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(image_msg) as resp:
-                        buffer = BytesIO(await resp.read())
-                        await message.channel.send(image_msg, file=File(buffer, 'image.jpg'), embed=None)
-
-            await message.channel.send(reformed_msg)
-            if image_msg:
-                await message.channel.send(image_msg)
-            await message.delete()
-
+            await message.channel.send(description, embed=None)
+        await message.delete()
 
 
 async def handle_trivia_message(message):
