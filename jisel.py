@@ -7,18 +7,12 @@ from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 import re
 from gyazo import Api
-from urllib.parse import urlparse
-from os.path import splitext, basename
-import aiohttp
 from sqlalchemy import *
-import json
 import os
 import datetime
 from discord import File, Member, Role, PermissionOverwrite, ChannelType, Embed, TextChannel
 import requests
-import time
 import asyncio
-import threading
 from typing import Union
 from remoteGoogImage import detect_text_uri
 import pytz
@@ -28,7 +22,6 @@ import redis
 import calendar
 import json
 from dbEngine import db
-from fbdowntest import getdownlink
 import aiohttp
 from io import BytesIO
 
@@ -203,6 +196,16 @@ async def on_member_update(before, after):
                 last = before.nick
                 if last:
                     await after.edit(nick="Death")
+
+@client.command(pass_context=True)
+@commands.has_any_role('Jiselicious')
+async def leave(ctx, guild_id) :
+    guild = client.get_guild(int(guild_id))
+    if guild is None:
+        await ctx.send("I don't recognize that guild.")
+        return
+    await guild.leave()
+    await ctx.send(f":ok_hand: Left guild: {guild.name} ({guild.id})")
 
 @client.command(pass_context=True)
 async def perms(ctx, member: Union[Member, Role], *args) :
