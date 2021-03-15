@@ -798,12 +798,18 @@ async def handle_announcement(message):
                 image_line = image_line[0]
             async with aiohttp.ClientSession() as session:
                 async with session.get(video_tag) as resp_video:
-                    async with session.get(image_line) as resp_image:
+                    if image_line:
+                        async with session.get(image_line) as resp_image:
+                            buffer_video = BytesIO(await resp_video.read())
+                            buffer_image = BytesIO(await resp_image.read())
+                            video_name = video_tag.lstrip("https://").split("?")[0]
+                            image_name = image_line.lstrip("https://").split("?")[0]
+                            await message.channel.send(description, files=[File(buffer_video, video_name), File(buffer_image, image_name)])
+                    else:
                         buffer_video = BytesIO(await resp_video.read())
-                        buffer_image = BytesIO(await resp_image.read())
                         video_name = video_tag.lstrip("https://").split("?")[0]
-                        image_name = image_line.lstrip("https://").split("?")[0]
-                        await message.channel.send(description, files=[File(buffer_video, video_name), File(buffer_image, image_name)])
+                        await message.channel.send(description, files=[File(buffer_video, video_name)])
+
         elif "scontent" in message.content:
             description = message.content
             description = "\n".join(
