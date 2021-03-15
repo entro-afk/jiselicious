@@ -786,11 +786,11 @@ async def main(message):
 async def handle_announcement(message):
     if message.channel.name in jiselConf['announcements_channels']:
         split_msg = message.content.split(" ")
-        if "video-iad3" in message.content:
+        if "video-" in message.content:
             description = message.content
             description = "\n".join(
-                [f"<{line}>" if line.startswith("https") else line for line in description.split("\n") if "video-iad3" not in line and "scontent" not in line])
-            video_tag = [line for line in message.content.split("\n") if "video-iad3" in line]
+                [f"<{line}>" if line.startswith("https") else line for line in description.split("\n") if "video-" not in line and "scontent" not in line])
+            video_tag = [line for line in message.content.split("\n") if "video-" in line]
             if video_tag:
                 video_tag = video_tag[0]
             image_line = [line for line in message.content.split("\n") if "scontent" in line]
