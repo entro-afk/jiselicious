@@ -779,7 +779,6 @@ async def main(message):
         handle_request_event(message),
         handle_bug_report(message),
         handle_trivia_message(message),
-        handle_announcement(message),
         handle_hangman(message)
     )
 
