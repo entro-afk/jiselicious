@@ -93,9 +93,9 @@ trello:
     - 'valkyra0007'
     - 'calidaria'
   trello_discord_id_pair:
-    'fan_jisel': 264907771646967820
-    'valkyra0007': 189820871370735616
-    'calidaria': 388784012916817920
+    'fan_jisel': 26490222FAKE67820
+    'valkyra0007': 1898222FAKE70735616
+    'calidaria': 388784222FAKE817920
 
 bot_token: 'Aub222222222cUpdxZyd1Xqzcass.XhnwNA.FAKETOKEN'
 #bot_token: 'Njk2222223ODUyMzYyODAy.XoeU9g.FAKETOKEN'
@@ -112,4 +112,4 @@ postgres:
   port: '5432'
 
 
-## https://trello.com/1/authorize?key=2afae0644852&expiration=never&response_type=token&scope=read,write
+## https://trello.com/1/authorize?key=2afae0FAKE644852&expiration=never&response_type=token&scope=read,write
