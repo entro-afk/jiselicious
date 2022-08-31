@@ -1,0 +1,115 @@
+#jiselConf.yaml file
+
+guild_id:
+  506680741988532225
+
+snk_guild_id:
+  506680741988532225
+
+genshin_personal_guild_id:
+  57406680TEST532225
+
+trivia_banner_link: 'https://i.gyazo.com/d7f3d76a457df421cf029eab88629e69.png'
+
+hoster_application_channel:
+  - 'ingame-event-hoster-application'
+
+expiration_seconds: 600
+
+fancy_yes_emoji: 'Yes:771864479461539840'
+
+info_color: 7506394
+
+warning_color: 16426522
+
+soft_green: 4437377
+
+slow_mode_trivia: 3
+
+event_request_channel:
+  - 'request-event'
+
+bot_feed_back_channel:
+  name: 'bots'
+
+trivia_channel: 'trivia'
+
+complete_events_channel: 'complete-events'
+
+veteran_hosters_channel: 'veteran-hosters'
+
+charge_emoji_name: 'PWM_yes'
+
+codes_list_link: 'https://gyazo.com/0e11db45f4b54143d2d626b3f7372503'
+perms_magic:
+  - 189820871370735616
+  - 388784012916817920
+  - 264907771646967820
+
+event_codes_team:
+  - 189820871370735616
+  - 388784012916817920
+  - 264907771646967820
+
+veteran_hoster_role_name: 'Veteran Hoster'
+
+announcements_channels:
+  - 'projects-to-do'
+
+
+code_prefixes:
+  - 'GLK'
+  - 'GLC'
+  - 'GKH'
+  - 'GLJ'
+  - 'GLT'
+  - 'GLY'
+  - 'GLU'
+  - 'GLV'
+  - 'GLW'
+  - 'YRP'
+  - 'XBB'
+  - 'WXL'
+
+one_time_prefix:
+  - 'GLC'
+
+random_prefixes:
+  - 'GLK'
+  - 'GKH'
+  - 'GLJ'
+  - 'GLY'
+
+trello:
+  api_key: 'e0ae0620eae22222FAKE0b4d0966ea02'
+  api_secret: 'f8f7741dba1a4257847692b3aa0aFAKETOKEN2c63d2db3eb9f47dd5748b75e822113'
+  token: '343968438de973e05cFAKETOKENea724cc6a160102462e14bc7'
+  board_id: '5e45a4ab68b08c3bccb56543'
+  list_id: '5e49fd9a2df7ff84c0b88a6e'
+  ec_log_id: '5e45a4acd374d28668d2d54e'
+  code_sent_list_id: '5e45a4ab73aca7453ca44c9d'
+  special_sender_usernames:
+    - 'fan_jisel'
+    - 'valkyra0007'
+    - 'calidaria'
+  trello_discord_id_pair:
+    'fan_jisel': 264907771646967820
+    'valkyra0007': 189820871370735616
+    'calidaria': 388784012916817920
+
+bot_token: 'Aub222222222cUpdxZyd1Xqzcass.XhnwNA.FAKETOKEN'
+#bot_token: 'Njk2222223ODUyMzYyODAy.XoeU9g.FAKETOKEN'
+
+gyazo_token:
+  '062222842FAKEfb525060000b7aa9ad57e8FAKE8bdd54dadca5---b9'
+
+goog:
+  'quickstart-1581222285975-8959801FAKE.json'
+
+postgres:
+  pwd: 'FAKEPASSWORD'
+  host: 'localhost'
+  port: '5432'
+
+
+## https://trello.com/1/authorize?key=2afae0644852&expiration=never&response_type=token&scope=read,write
